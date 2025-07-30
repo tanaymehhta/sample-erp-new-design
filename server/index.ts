@@ -10,6 +10,7 @@ import suppliersRouter from './routes/suppliers'
 import productsRouter from './routes/products'
 import syncRouter from './routes/sync'
 import inventoryRouter from './routes/inventory'
+import additionalNotificationsRouter from './routes/additional-notifications'
 
 dotenv.config()
 
@@ -30,6 +31,7 @@ app.use('/api/suppliers', suppliersRouter)
 app.use('/api/products', productsRouter)
 app.use('/api/sync', syncRouter)
 app.use('/api/inventory', inventoryRouter)
+app.use('/api/whatsapp', additionalNotificationsRouter)
 
 // Health check
 app.get('/api/health', (req, res) => {

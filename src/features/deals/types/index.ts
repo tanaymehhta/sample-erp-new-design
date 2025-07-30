@@ -27,6 +27,9 @@ export interface CreateDealRequest {
   saleRate: number
   deliveryTerms: 'delivered' | 'pickup'
   productCode: string
+  grade?: string
+  company?: string
+  specificGrade?: string
   saleSource: 'new' | 'inventory'
   purchaseParty: string
   purchaseQuantity: number
@@ -46,6 +49,8 @@ export interface DealFilters {
   deliveryTerms?: 'delivered' | 'pickup'
   minAmount?: number
   maxAmount?: number
+  page?: number
+  limit?: number
 }
 
 export interface DealSummary {

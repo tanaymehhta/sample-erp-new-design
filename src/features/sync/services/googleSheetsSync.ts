@@ -28,7 +28,7 @@ class GoogleSheetsSyncService implements GoogleSheetsSyncInterface {
 
   private async getGoogleAuth() {
     if (!this.auth) {
-      const keyFilePath = path.join(process.cwd(), 'gen-lang-client-0238807985-5ad5a4c250c2.json')
+      const keyFilePath = path.join(process.cwd(), 'gen-lang-client-0238807985-2056cd44e1e5.json')
       this.auth = new google.auth.GoogleAuth({
         keyFile: keyFilePath,
         scopes: ['https://www.googleapis.com/auth/spreadsheets']

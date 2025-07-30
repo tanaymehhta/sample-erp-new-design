@@ -46,3 +46,7 @@
 2. Then address Issue #1 (Register Deal button)
 3. Implement Issue #2 (Mini purchase option)
 4. Finally tackle Issue #4 (Analytics)
+
+
+### Chat option - to chat with the system - that works as a data analyst
+### Analytics - not working on connected

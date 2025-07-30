@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { 
   Plus, 
   TrendingUp, 
@@ -32,6 +33,52 @@ const itemVariants = {
 }
 
 export default function Dashboard() {
+  const [stats, setStats] = useState({
+    totalDeals: 0,
+    customers: 0,
+    products: 0,
+    inventory: 0
+  })
+  const [loading, setLoading] = useState(true)
+
+  const fetchStats = async () => {
+    try {
+      setLoading(true)
+      const [dealsRes, customersRes, productsRes, inventoryRes] = await Promise.all([
+        fetch('/api/deals/stats'),
+        fetch('/api/customers/stats'),
+        fetch('/api/products/stats'),
+        fetch('/api/inventory/stats')
+      ])
+
+      const [dealsData, customersData, productsData, inventoryData] = await Promise.all([
+        dealsRes.json(),
+        customersRes.json(),
+        productsRes.json(),
+        inventoryRes.json()
+      ])
+
+      setStats({
+        totalDeals: dealsData.success ? dealsData.data.total : 0,
+        customers: customersData.success ? customersData.data.total : 0,
+        products: productsData.success ? productsData.data.total : 0,
+        inventory: inventoryData.success ? inventoryData.data.total : 0
+      })
+    } catch (error) {
+      console.error('Error fetching stats:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchStats()
+    
+    // Poll for updates every 30 seconds
+    const interval = setInterval(fetchStats, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
   return (
     <motion.div
       variants={containerVariants}
@@ -59,7 +106,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Deals</p>
-              <p className="text-3xl font-bold text-gray-900">0</p>
+              <p className="text-3xl font-bold text-gray-900">{loading ? '...' : stats.totalDeals}</p>
               <p className="text-sm text-green-600 flex items-center mt-1">
                 <TrendingUp className="w-4 h-4 mr-1" />
                 Ready to start
@@ -79,7 +126,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Customers</p>
-              <p className="text-3xl font-bold text-gray-900">76</p>
+              <p className="text-3xl font-bold text-gray-900">{loading ? '...' : stats.customers}</p>
               <p className="text-sm text-blue-600 flex items-center mt-1">
                 <Users className="w-4 h-4 mr-1" />
                 Pre-loaded
@@ -99,7 +146,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Products</p>
-              <p className="text-3xl font-bold text-gray-900">320</p>
+              <p className="text-3xl font-bold text-gray-900">{loading ? '...' : stats.products}</p>
               <p className="text-sm text-purple-600 flex items-center mt-1">
                 <Package className="w-4 h-4 mr-1" />
                 Catalog ready
@@ -119,14 +166,14 @@ export default function Dashboard() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Inventory</p>
-              <p className="text-3xl font-bold text-gray-900">0</p>
-              <p className="text-sm text-orange-600 flex items-center mt-1">
+              <p className="text-3xl font-bold text-gray-900">{loading ? '...' : Math.round(stats.inventory / 1000).toLocaleString()} tons</p>
+              <p className="text-sm text-blue-600 flex items-center mt-1">
                 <Clock className="w-4 h-4 mr-1" />
-                Empty - ready
+                Stock available
               </p>
             </div>
-            <div className="bg-orange-100 p-3 rounded-xl">
-              <Package className="w-6 h-6 text-orange-600" />
+            <div className="bg-blue-100 p-3 rounded-xl">
+              <Package className="w-6 h-6 text-blue-600" />
             </div>
           </div>
         </motion.div>

@@ -89,7 +89,7 @@ class InventoryService implements InventoryServiceInterface {
   async updateInventoryItem(id: string, item: Partial<CreateInventoryRequest>): Promise<ApiResponse<InventoryItem>> {
     try {
       console.log('📦 InventoryService: Updating inventory item', id, item)
-      const response = await this.apiService.put<InventoryItem>(`${this.endpoint}/${id}`, item)
+      const response = await this.apiService.put<InventoryItem>(`${this.endpoint}/update`, { id, ...item })
       
       if (response.success && response.data) {
         this.eventBus.emit('inventory.item.updated', response.data, 'InventoryService')
@@ -106,7 +106,7 @@ class InventoryService implements InventoryServiceInterface {
   async deleteInventoryItem(id: string): Promise<ApiResponse<void>> {
     try {
       console.log('📦 InventoryService: Deleting inventory item', id)
-      const response = await this.apiService.delete<void>(`${this.endpoint}/${id}`)
+      const response = await this.apiService.delete<void>(`${this.endpoint}/remove`, { id })
       
       if (response.success) {
         this.eventBus.emit('inventory.item.deleted', { id }, 'InventoryService')

@@ -1,5 +1,8 @@
 import { google } from 'googleapis'
 import path from 'path'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 interface DealSource {
   id: string
@@ -34,7 +37,7 @@ interface DealData {
 }
 
 const GOOGLE_SHEETS_ID = process.env.GOOGLE_SHEETS_ID
-const GOOGLE_SERVICE_ACCOUNT_PATH = path.join(process.cwd(), 'gen-lang-client-0238807985-5ad5a4c250c2.json')
+const GOOGLE_SERVICE_ACCOUNT_PATH = path.join(process.cwd(), 'gen-lang-client-0238807985-2056cd44e1e5.json')
 
 let auth: any = null
 
