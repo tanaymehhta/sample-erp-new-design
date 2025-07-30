@@ -85,33 +85,28 @@ Deal ID: #${deal.id.slice(-8).toUpperCase()}`
   } else if (deal.sources && deal.sources.length === 1) {
     // Single source from inventory
     const source = deal.sources[0]
-    purchaseDetails = `Purchase from **${source.supplierName}**
+    purchaseDetails = `Purchase from *${source.supplierName}*
 Quantity: ${source.quantityUsed} kg
-Rate: ₹${source.costPerKg}`
+Rate: ${source.costPerKg}
+${deal.purchaseComments ? `Comments: ${deal.purchaseComments}` : ''}`
   } else {
     // Traditional new material deal
-    purchaseDetails = `Purchase from **${deal.purchaseParty}**
+    purchaseDetails = `Purchase from *${deal.purchaseParty}*
 Quantity: ${deal.purchaseQuantity} kg
-Rate: ₹${deal.purchaseRate}`
+Rate: ${deal.purchaseRate}
+${deal.purchaseComments ? `Comments: ${deal.purchaseComments}` : ''}`
   }
 
-  return `📊 DEAL REGISTERED - ACCOUNTS
+  return `Date: ${deal.date}
 
-Date: ${deal.date}
-
-Sold to **${deal.saleParty}**
+Sold to *${deal.saleParty}*
 Quantity: ${deal.quantitySold} kg
-Rate: ₹${deal.saleRate} ${deal.deliveryTerms}
+Rate: ${deal.saleRate} ${deal.deliveryTerms}
 ${deal.saleComments ? `Comments: ${deal.saleComments}` : ''}
 
-**${deal.productCode}** ${deal.company} ${deal.grade}
+*${deal.productCode}*  ${deal.company} ${deal.grade}
 
-${purchaseDetails}
-${deal.purchaseComments ? `Comments: ${deal.purchaseComments}` : ''}
-
----
-Polymer Trading System
-${new Date().toLocaleString()}`
+${purchaseDetails}`
 }
 
 function generateLogisticsMessage(deal: DealData): string {
@@ -126,25 +121,16 @@ ${deal.sources.map((source, index) =>
 
 ⚠️ Coordinate multiple pickups/deliveries`
   } else if (deal.sources && deal.sources.length === 1) {
-    supplierInfo = `Purchase from **${deal.sources[0].supplierName}**`
+    supplierInfo = `Purchase from *${deal.sources[0].supplierName}*`
   } else {
-    supplierInfo = `Purchase from **${deal.purchaseParty}**`
+    supplierInfo = `Purchase from *${deal.purchaseParty}*`
   }
 
-  return `🚚 LOGISTICS UPDATE
-
-Date: ${deal.date}
-
-Sold to **${deal.saleParty}**
-**${deal.productCode}** ${deal.company} ${deal.grade}
+  return `Sold to *${deal.saleParty}*
+${deal.company} ${deal.grade} *${deal.productCode}* 
 ${deal.quantitySold} kg
-
 ${supplierInfo}
-${deal.warehouse ? `Warehouse: ${deal.warehouse}` : ''}
-
----
-Polymer Trading System
-${new Date().toLocaleString()}`
+${deal.warehouse ? `Warehouse: ${deal.warehouse}` : ''}`
 }
 
 function generateBossMessage(deal: DealData): string {
@@ -153,7 +139,6 @@ function generateBossMessage(deal: DealData): string {
   if (deal.sources && deal.sources.length > 1) {
     // Multi-source summary for boss
     const totalCost = deal.sources.reduce((sum, s) => sum + (s.quantityUsed * s.costPerKg), 0)
-    const avgCostPerKg = totalCost / deal.quantitySold
     
     purchaseDetails = `📦 Multi-Source Purchase:
 ${deal.sources.map((source, index) => 
@@ -161,40 +146,38 @@ ${deal.sources.map((source, index) =>
 ).join('\n')}
 
 Total Purchase Cost: ₹${totalCost.toLocaleString()}
-Avg Cost: ₹${avgCostPerKg.toFixed(2)}/kg
 Sale Revenue: ₹${(deal.quantitySold * deal.saleRate).toLocaleString()}
-Profit: ₹${((deal.quantitySold * deal.saleRate) - totalCost).toLocaleString()}
-
-⚠️ Multi-supplier deal - requires coordination`
+Profit: ₹${((deal.quantitySold * deal.saleRate) - totalCost).toLocaleString()}`
   } else if (deal.sources && deal.sources.length === 1) {
     const source = deal.sources[0]
-    const profit = (deal.quantitySold * deal.saleRate) - (source.quantityUsed * source.costPerKg)
-    purchaseDetails = `Purchase from **${source.supplierName}**
+    purchaseDetails = `Purchase from *${source.supplierName}*
 Quantity: ${source.quantityUsed} kg
-Rate: ₹${source.costPerKg}
-Sale Revenue: ₹${(deal.quantitySold * deal.saleRate).toLocaleString()}
-Profit: ₹${profit.toLocaleString()}`
+Rate: ${source.costPerKg}
+${deal.purchaseComments ? `Comments: ${deal.purchaseComments}` : ''}`
   } else {
-    const profit = (deal.quantitySold * deal.saleRate) - (deal.purchaseQuantity * deal.purchaseRate)
-    purchaseDetails = `Purchase from **${deal.purchaseParty}**
+    purchaseDetails = `Purchase from *${deal.purchaseParty}*
 Quantity: ${deal.purchaseQuantity} kg
-Rate: ₹${deal.purchaseRate}
-Sale Revenue: ₹${(deal.quantitySold * deal.saleRate).toLocaleString()}
-Profit: ₹${profit.toLocaleString()}`
+Rate: ${deal.purchaseRate}
+${deal.purchaseComments ? `Comments: ${deal.purchaseComments}` : ''}`
   }
 
   return `📊 DEAL SUMMARY FOR BOSS 📊
 
 Date: ${deal.date}
 
-Sold to **${deal.saleParty}**
+Sold to *${deal.saleParty}*
 Quantity: ${deal.quantitySold} kg
-Rate: ₹${deal.saleRate} ${deal.deliveryTerms}
+Rate: ${deal.saleRate} ${deal.deliveryTerms}
+${deal.saleComments ? `Comments: ${deal.saleComments}` : ''}
 
-**${deal.productCode}** ${deal.company} ${deal.grade}
+*${deal.productCode}*  ${deal.company} ${deal.grade}
 
 ${purchaseDetails}
 
+Sold to *${deal.saleParty}*
+*${deal.productCode}*  ${deal.company} ${deal.grade}
+${deal.quantitySold} kg
+Purchase from *${deal.sources && deal.sources.length > 0 ? deal.sources[0].supplierName : deal.purchaseParty}*
 ${deal.warehouse ? `Warehouse: ${deal.warehouse}` : ''}
 
 ---

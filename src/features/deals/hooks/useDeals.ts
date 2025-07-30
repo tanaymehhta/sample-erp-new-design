@@ -18,10 +18,13 @@ interface UseDealsState {
 }
 
 interface UseDealsActions {
-  fetchDeals: (filters?: DealFilters) => Promise<void>
+  fetchDeals: (filters?: DealFilters, page?: number) => Promise<void>
   createDeal: (dealData: CreateDealRequest) => Promise<Deal | null>
   refreshDeals: () => Promise<void>
   clearError: () => void
+  goToPage: (page: number) => Promise<void>
+  nextPage: () => Promise<void>
+  prevPage: () => Promise<void>
 }
 
 export function useDeals(initialFilters?: DealFilters): UseDealsState & UseDealsActions {
@@ -36,26 +39,31 @@ export function useDeals(initialFilters?: DealFilters): UseDealsState & UseDeals
     pagination: {
       total: 0,
       page: 1,
-      limit: 20,
+      limit: 50,
       totalPages: 0
     }
   })
 
   const [currentFilters, setCurrentFilters] = useState<DealFilters | undefined>(initialFilters)
 
-  const fetchDeals = useCallback(async (filters?: DealFilters) => {
+  const fetchDeals = useCallback(async (filters?: DealFilters, page?: number) => {
     try {
       setState(prev => ({ ...prev, loading: true, error: null }))
       setCurrentFilters(filters)
 
-      const response = await dealService.getDeals(filters)
+      const paginationParams = {
+        page: page || 1,
+        limit: 50
+      }
+
+      const response = await dealService.getDeals({ ...filters, ...paginationParams })
 
       if (response.success && response.data) {
         setState(prev => ({
           ...prev,
           deals: response.data || [],
           loading: false,
-          pagination: response.pagination || prev.pagination
+          pagination: response.pagination || { ...prev.pagination, page: paginationParams.page }
         }))
       } else {
         throw new Error(response.error || 'Failed to fetch deals')
@@ -98,12 +106,39 @@ export function useDeals(initialFilters?: DealFilters): UseDealsState & UseDeals
   }, [dealService])
 
   const refreshDeals = useCallback(async () => {
-    await fetchDeals(currentFilters)
+    setState(prev => ({ ...prev, pagination: { ...prev.pagination, page: 1 } }))
+    await fetchDeals(currentFilters, 1)
   }, [fetchDeals, currentFilters])
 
   const clearError = useCallback(() => {
     setState(prev => ({ ...prev, error: null }))
   }, [])
+
+  const goToPage = useCallback(async (page: number) => {
+    await fetchDeals(currentFilters, page)
+  }, [fetchDeals, currentFilters])
+
+  const nextPage = useCallback(async () => {
+    setState(prev => {
+      const nextPageNum = prev.pagination.page + 1
+      if (nextPageNum <= prev.pagination.totalPages) {
+        fetchDeals(currentFilters, nextPageNum)
+        return prev
+      }
+      return prev
+    })
+  }, [fetchDeals, currentFilters])
+
+  const prevPage = useCallback(async () => {
+    setState(prev => {
+      const prevPageNum = prev.pagination.page - 1
+      if (prevPageNum >= 1) {
+        fetchDeals(currentFilters, prevPageNum)
+        return prev
+      }
+      return prev
+    })
+  }, [fetchDeals, currentFilters])
 
   // Listen for deal events from other parts of the app
   useEffect(() => {
@@ -157,6 +192,9 @@ export function useDeals(initialFilters?: DealFilters): UseDealsState & UseDeals
     fetchDeals,
     createDeal,
     refreshDeals,
-    clearError
+    clearError,
+    goToPage,
+    nextPage,
+    prevPage
   }
 }

@@ -2,9 +2,12 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { History, Search, Download, Filter, Calendar, Eye } from 'lucide-react'
 import { useDeals } from '../hooks/useDeals'
-import { DealFilters } from '../types'
+import { DealFilters, Deal } from '../types'
 import { LoadingSpinner } from '../../../shared/components'
 import { cn } from '../../../shared/utils/cn'
+import DealRowActions from './DealRowActions'
+import EditDealModal from './EditDealModal'
+import DeleteConfirmation from './DeleteConfirmation'
 
 interface DealsHistoryProps {
   onViewDeal?: (dealId: string) => void
@@ -14,19 +17,39 @@ export default function DealsHistory({ onViewDeal }: DealsHistoryProps) {
   const [filters, setFilters] = useState<DealFilters>({})
   const [searchTerm, setSearchTerm] = useState('')
   const [showFilters, setShowFilters] = useState(false)
+  
+  // Modal states
+  const [editingDeal, setEditingDeal] = useState<Deal | null>(null)
+  const [deletingDeal, setDeletingDeal] = useState<Deal | null>(null)
 
-  const { deals, loading, error, fetchDeals, refreshDeals } = useDeals()
+  const { deals, loading, error, fetchDeals, refreshDeals, pagination, goToPage, nextPage, prevPage } = useDeals()
+
+  // Auto-refresh when deals likely changed
+  useEffect(() => {
+    console.log('🚀 Setting up auto-refresh for deals history')
+    const refreshInterval = setInterval(() => {
+      console.log('🔄 Auto-refreshing deals history...')
+      refreshDeals()
+    }, 30000) // Refresh every 30 seconds
+
+    return () => {
+      console.log('🛑 Clearing auto-refresh interval')
+      clearInterval(refreshInterval)
+    }
+  }, [refreshDeals])
 
   // Apply filters when they change
   useEffect(() => {
     const delayedFetch = setTimeout(() => {
-      const appliedFilters: DealFilters = { ...filters }
+      const appliedFilters: DealFilters = {
+        ...filters
+      }
       
       if (searchTerm) {
         appliedFilters.saleParty = searchTerm
       }
       
-      fetchDeals(appliedFilters)
+      fetchDeals(appliedFilters, 1)
     }, 300)
 
     return () => clearTimeout(delayedFetch)
@@ -42,7 +65,9 @@ export default function DealsHistory({ onViewDeal }: DealsHistoryProps) {
       const url = URL.createObjectURL(dataBlob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `deals-export-${new Date().toISOString().split('T')[0]}.json`
+      const today = new Date()
+      const dateStr = `${today.getDate().toString().padStart(2, '0')}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getFullYear()}`
+      link.download = `deals-export-${dateStr}.json`
       link.click()
       URL.revokeObjectURL(url)
     } catch (error) {
@@ -57,6 +82,25 @@ export default function DealsHistory({ onViewDeal }: DealsHistoryProps) {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount)
+  }
+
+  // Action handlers
+  const handleEditDeal = (deal: Deal) => {
+    setEditingDeal(deal)
+  }
+
+  const handleDeleteDeal = (deal: Deal) => {
+    setDeletingDeal(deal)
+  }
+
+  const handleDealSaved = (updatedDeal: Deal) => {
+    // The hook will automatically update via event bus
+    refreshDeals()
+  }
+
+  const handleDealDeleted = (dealId: string) => {
+    // The hook will automatically update via event bus
+    refreshDeals()
   }
 
 
@@ -242,17 +286,17 @@ export default function DealsHistory({ onViewDeal }: DealsHistoryProps) {
                     <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '180px' }}>Purchase Party</th>
                     <th className="text-right py-3 px-4 font-medium text-gray-700" style={{ width: '140px' }}>Quantity Purchased</th>
                     <th className="text-right py-3 px-4 font-medium text-gray-700" style={{ width: '120px' }}>Purchase Rate</th>
-                    <th className="text-center py-3 px-4 font-medium text-gray-700" style={{ width: '50px' }}>Actions</th>
+                    <th className="text-center py-3 px-4 font-medium text-gray-700" style={{ width: '100px' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {deals.map((deal, index) => (
                     <motion.tr
                       key={deal.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-150"
                     >
                       <td className="py-4 px-4 text-sm font-medium text-gray-700">
                         {index + 1}
@@ -285,16 +329,11 @@ export default function DealsHistory({ onViewDeal }: DealsHistoryProps) {
                         ₹{deal.purchaseRate.toLocaleString()}
                       </td>
                       <td className="py-4 px-4 text-center">
-                        {onViewDeal && (
-                          <motion.button
-                            onClick={() => onViewDeal(deal.id)}
-                            className="text-primary-600 hover:text-primary-800 transition-colors"
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </motion.button>
-                        )}
+                        <DealRowActions
+                          deal={deal}
+                          onEdit={handleEditDeal}
+                          onDelete={handleDeleteDeal}
+                        />
                       </td>
                     </motion.tr>
                   ))}
@@ -307,10 +346,10 @@ export default function DealsHistory({ onViewDeal }: DealsHistoryProps) {
               {deals.map((deal, index) => (
                 <motion.div
                   key={deal.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="bg-gray-50 rounded-xl p-4 border border-gray-200"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: index * 0.03 }}
+                  className="bg-gray-50 rounded-xl p-4 border border-gray-200 hover:bg-white hover:border-gray-300 hover:shadow-md transition-all duration-200"
                 >
                   <div className="flex justify-between items-start mb-3">
                     <div>
@@ -336,17 +375,11 @@ export default function DealsHistory({ onViewDeal }: DealsHistoryProps) {
                       <p className="text-xs text-gray-500">{deal.grade}</p>
                     </div>
                     
-                    {onViewDeal && (
-                      <motion.button
-                        onClick={() => onViewDeal(deal.id)}
-                        className="btn-secondary text-sm py-2 px-3"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <Eye className="w-4 h-4 mr-1" />
-                        View
-                      </motion.button>
-                    )}
+                    <DealRowActions
+                      deal={deal}
+                      onEdit={handleEditDeal}
+                      onDelete={handleDeleteDeal}
+                    />
                   </div>
                 </motion.div>
               ))}
@@ -354,7 +387,9 @@ export default function DealsHistory({ onViewDeal }: DealsHistoryProps) {
 
             {/* Pagination info */}
             <div className="mt-6 flex justify-between items-center text-sm text-gray-600">
-              <span>Showing {deals.length} deals</span>
+              <span>
+                Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} deals
+              </span>
               {deals.length > 0 && (
                 <span>
                   Total Value: {formatCurrency(
@@ -363,9 +398,75 @@ export default function DealsHistory({ onViewDeal }: DealsHistoryProps) {
                 </span>
               )}
             </div>
+
+            {/* Pagination Controls */}
+            {pagination.totalPages > 1 && (
+              <div className="mt-6 flex items-center justify-center">
+                <div className="flex items-center space-x-1 bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
+                  <button
+                    onClick={prevPage}
+                    disabled={pagination.page <= 1}
+                    className="px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    ←
+                  </button>
+                  
+                  {Array.from({ length: Math.min(pagination.totalPages, 10) }, (_, i) => {
+                    let pageNum;
+                    if (pagination.totalPages <= 10) {
+                      pageNum = i + 1;
+                    } else {
+                      const current = pagination.page;
+                      const start = Math.max(1, current - 4);
+                      const end = Math.min(pagination.totalPages, start + 9);
+                      pageNum = start + i;
+                      if (pageNum > end) return null;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => goToPage(pageNum)}
+                        className={cn(
+                          "px-3 py-2 text-sm font-medium rounded-md min-w-[40px]",
+                          pageNum === pagination.page
+                            ? "bg-blue-600 text-white shadow-md"
+                            : "text-gray-700 hover:bg-gray-100"
+                        )}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    onClick={nextPage}
+                    disabled={pagination.page >= pagination.totalPages}
+                    className="px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    →
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
+
+      {/* Modals */}
+      <EditDealModal
+        deal={editingDeal}
+        isOpen={!!editingDeal}
+        onClose={() => setEditingDeal(null)}
+        onSaved={handleDealSaved}
+      />
+
+      <DeleteConfirmation
+        deal={deletingDeal}
+        isOpen={!!deletingDeal}
+        onClose={() => setDeletingDeal(null)}
+        onDeleted={handleDealDeleted}
+      />
     </motion.div>
   )
 }

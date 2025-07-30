@@ -54,19 +54,21 @@ export default function Layout({ children }: LayoutProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <motion.div 
-              className="flex items-center space-x-3"
-              whileHover={{ scale: 1.05 }}
-              transition={{ type: "spring", stiffness: 400, damping: 10 }}
-            >
-              <div className="bg-primary-600 p-2 rounded-xl">
-                <Factory className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Polymer Trading</h1>
-                <p className="text-xs text-gray-500">Management System</p>
-              </div>
-            </motion.div>
+            <Link to="/">
+              <motion.div 
+                className="flex items-center space-x-3 cursor-pointer"
+                whileHover={{ scale: 1.05 }}
+                transition={{ type: "spring", stiffness: 400, damping: 10 }}
+              >
+                <div className="bg-primary-600 p-2 rounded-xl">
+                  <Factory className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900">Polymer Trading</h1>
+                  <p className="text-xs text-gray-500">Management System</p>
+                </div>
+              </motion.div>
+            </Link>
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center space-x-1">

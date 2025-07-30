@@ -1,9 +1,21 @@
 import { motion } from 'framer-motion'
-import { Package, Plus, Grid, List, TrendingUp, Boxes, DollarSign, RefreshCw } from 'lucide-react'
-import { useInventory } from '../features/inventory/hooks/useInventory'
+import { Package, Plus, Grid, List, TrendingUp, Boxes, DollarSign, RefreshCw, Expand, Minimize } from 'lucide-react'
+import { useGroupedInventory } from '../features/inventory/hooks/useGroupedInventory'
+import { ExpandableInventoryRow } from '../features/inventory/components/ExpandableInventoryRow'
 
 export default function Inventory() {
-  const { inventory, summary, loading, error, refetch } = useInventory()
+  const { 
+    groupedInventory, 
+    groupedSummary, 
+    loading, 
+    error, 
+    refetch, 
+    toggleExpansion, 
+    isExpanded, 
+    expandAll, 
+    collapseAll, 
+    expansionStats 
+  } = useGroupedInventory()
 
   if (loading) {
     return (
@@ -92,9 +104,10 @@ export default function Inventory() {
             <div className="flex-shrink-0">
               <Boxes className="h-8 w-8 text-blue-500" />
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Total Items</p>
-              <p className="text-2xl font-bold text-gray-900">{summary.totalItems}</p>
+            <div className="ml-4 flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-500">Unique Products</p>
+              <p className="text-xl font-bold text-gray-900 truncate">{groupedSummary.totalUniqueProducts}</p>
+              <p className="text-xs text-gray-400 truncate">{groupedSummary.totalItems} total batches</p>
             </div>
           </div>
         </div>
@@ -104,9 +117,9 @@ export default function Inventory() {
             <div className="flex-shrink-0">
               <Package className="h-8 w-8 text-green-500" />
             </div>
-            <div className="ml-4">
+            <div className="ml-4 flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-500">Total Quantity</p>
-              <p className="text-2xl font-bold text-gray-900">{summary.totalQuantity.toLocaleString()}kg</p>
+              <p className="text-xl font-bold text-gray-900 truncate">{groupedSummary.totalQuantity.toLocaleString()}kg</p>
             </div>
           </div>
         </div>
@@ -116,9 +129,9 @@ export default function Inventory() {
             <div className="flex-shrink-0">
               <DollarSign className="h-8 w-8 text-yellow-500" />
             </div>
-            <div className="ml-4">
+            <div className="ml-4 flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-500">Total Value</p>
-              <p className="text-2xl font-bold text-gray-900">₹{summary.totalValue.toLocaleString()}</p>
+              <p className="text-xl font-bold text-gray-900 truncate">₹{groupedSummary.totalValue.toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -128,15 +141,15 @@ export default function Inventory() {
             <div className="flex-shrink-0">
               <TrendingUp className="h-8 w-8 text-purple-500" />
             </div>
-            <div className="ml-4">
+            <div className="ml-4 flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-500">Avg. Rate</p>
-              <p className="text-2xl font-bold text-gray-900">₹{summary.totalQuantity > 0 ? Math.round(summary.totalValue / summary.totalQuantity) : 0}/kg</p>
+              <p className="text-xl font-bold text-gray-900 truncate">₹{groupedSummary.totalQuantity > 0 ? Math.round(groupedSummary.totalValue / groupedSummary.totalQuantity) : 0}/kg</p>
             </div>
           </div>
         </div>
       </div>
 
-      {inventory.length === 0 ? (
+      {groupedInventory.length === 0 ? (
         <div className="card">
           <div className="text-center py-12">
             <div className="bg-gray-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
@@ -155,61 +168,64 @@ export default function Inventory() {
         <div className="card">
           <div className="px-4 py-5 sm:p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-medium text-gray-900">Inventory Items</h2>
-              <p className="text-sm text-gray-500">{inventory.length} items</p>
+              <div>
+                <h2 className="text-lg font-medium text-gray-900">Inventory Items</h2>
+                <p className="text-sm text-gray-500">
+                  {groupedSummary.totalUniqueProducts} unique products • {groupedSummary.totalItems} total batches
+                </p>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={collapseAll}
+                  disabled={expansionStats.isNoneExpanded}
+                  className="btn-secondary text-sm flex items-center space-x-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Minimize className="w-4 h-4" />
+                  <span>Collapse All</span>
+                </button>
+                <button
+                  onClick={expandAll}
+                  disabled={expansionStats.isAllExpanded}
+                  className="btn-secondary text-sm flex items-center space-x-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Expand className="w-4 h-4" />
+                  <span>Expand All</span>
+                </button>
+              </div>
             </div>
             
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
+              <table className="min-w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Added</th>
+                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Grade</th>
+                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">Company</th>
+                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Quantity</th>
+                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Rate</th>
+                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Value</th>
+                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Suppliers</th>
+                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Latest Purchase</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {inventory.slice(0, 50).map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {item.productCode}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.grade}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.company}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {item.quantity.toLocaleString()}kg
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        ₹{item.rate}/kg
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        ₹{(item.quantity * item.rate).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.purchaseParty}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.dateAdded}
-                      </td>
-                    </tr>
+                <tbody className="bg-white">
+                  {groupedInventory.map((groupedItem) => (
+                    <ExpandableInventoryRow
+                      key={groupedItem.productKey}
+                      groupedItem={groupedItem}
+                      isExpanded={isExpanded(groupedItem.productKey)}
+                      onToggleExpand={() => toggleExpansion(groupedItem.productKey)}
+                    />
                   ))}
                 </tbody>
               </table>
             </div>
             
-            {inventory.length > 50 && (
+            {expansionStats.expandedCount > 0 && (
               <div className="mt-4 text-center">
                 <p className="text-sm text-gray-500">
-                  Showing first 50 items of {inventory.length} total items
+                  {expansionStats.expandedCount} of {expansionStats.totalCount} products expanded
                 </p>
               </div>
             )}

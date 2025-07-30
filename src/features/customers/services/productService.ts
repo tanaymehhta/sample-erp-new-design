@@ -65,7 +65,7 @@ class ProductService implements ProductServiceInterface {
     try {
       console.log('📦 ProductService: Updating product', id)
       
-      const response = await apiService.put<Product>(`${this.endpoint}/${id}`, productData)
+      const response = await apiService.put<Product>(`${this.endpoint}/update`, { id, ...productData })
       
       if (response.success && response.data) {
         eventBus.emit('product.updated', response.data, 'ProductService')
@@ -83,7 +83,7 @@ class ProductService implements ProductServiceInterface {
     try {
       console.log('📦 ProductService: Deleting product', id)
       
-      const response = await apiService.delete<void>(`${this.endpoint}/${id}`)
+      const response = await apiService.delete<void>(`${this.endpoint}/remove`, { id })
       
       if (response.success) {
         eventBus.emit('product.deleted', { id }, 'ProductService')

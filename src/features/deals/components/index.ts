@@ -1,0 +1,5 @@
+export { default as DealsHistory } from './DealsHistory'
+export { default as NewDealForm } from './NewDealForm'
+export { default as DealRowActions } from './DealRowActions'
+export { default as EditDealModal } from './EditDealModal'
+export { default as DeleteConfirmation } from './DeleteConfirmation'

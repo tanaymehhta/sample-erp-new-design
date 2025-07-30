@@ -90,18 +90,114 @@ class ServerSyncService {
       synced: 0,
       errors: [],
       conflictsResolved: 0,
-      message: 'Sheets to database sync not yet implemented'
+      message: 'Sheets to database sync completed'
     }
 
-    // This would be implemented to read from Google Sheets and update database
-    // For now, just return a placeholder result
+    try {
+      // Get data from Google Sheets
+      const sheetsData = await this.getSheetData()
+      
+      if (!sheetsData || sheetsData.length === 0) {
+        result.success = true
+        result.message = 'No new data found in sheets'
+        return result
+      }
+
+      // Process each row from sheets
+      for (const row of sheetsData) {
+        try {
+          // Check if deal already exists in database
+          const existingDeal = await prisma.deal.findFirst({
+            where: {
+              date: row.date,
+              saleParty: row.saleParty,
+              productCode: row.productCode,
+              quantitySold: row.quantitySold
+            }
+          })
+
+          if (existingDeal) {
+            // Skip if already exists
+            continue
+          }
+
+          // Create new deal from sheets data
+          await prisma.deal.create({
+            data: {
+              date: row.date,
+              saleParty: row.saleParty,
+              quantitySold: parseFloat(row.quantitySold),
+              saleRate: parseFloat(row.saleRate),
+              deliveryTerms: row.deliveryTerms || 'pickup',
+              productCode: row.productCode,
+              grade: row.grade,
+              company: row.company,
+              specificGrade: row.specificGrade,
+              saleSource: row.saleSource || 'New Material',
+              purchaseParty: row.purchaseParty,
+              purchaseQuantity: parseFloat(row.purchaseQuantity),
+              purchaseRate: parseFloat(row.purchaseRate),
+              saleComments: row.saleComments,
+              purchaseComments: row.purchaseComments,
+              finalComments: row.finalComments,
+              warehouse: row.warehouse
+            }
+          })
+          
+          result.synced++
+        } catch (error) {
+          result.errors.push(`Failed to sync row: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        }
+      }
+
+      result.success = true
+      result.message = `Successfully synced ${result.synced} deals from sheets`
+      
+    } catch (error) {
+      result.success = false
+      result.message = `Sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      result.errors.push(error instanceof Error ? error.message : 'Unknown error')
+    }
 
     return result
   }
 
   async getSheetData(): Promise<any[]> {
-    // Placeholder - would integrate with Google Sheets service
-    return []
+    try {
+      // Import Google Sheets service dynamically to avoid circular dependencies
+      const { getGoogleSheetsData } = await import('./googleSheets')
+      
+      // Get data from the main deals sheet
+      const sheetsData = await getGoogleSheetsData('Deals')
+      
+      if (!sheetsData || sheetsData.length === 0) {
+        return []
+      }
+
+      // Transform sheets data to match our database schema
+      return sheetsData.map((row: any) => ({
+        date: row['Date'] || row['date'],
+        saleParty: row['Sale Party'] || row['saleParty'], 
+        quantitySold: row['Quantity Sold'] || row['quantitySold'],
+        saleRate: row['Sale Rate'] || row['saleRate'],
+        deliveryTerms: row['Delivery Terms'] || row['deliveryTerms'],
+        productCode: row['Product Code'] || row['productCode'],
+        grade: row['Grade'] || row['grade'],
+        company: row['Company'] || row['company'],
+        specificGrade: row['Specific Grade'] || row['specificGrade'],
+        saleSource: row['Sale Source'] || row['saleSource'],
+        purchaseParty: row['Purchase Party'] || row['purchaseParty'],
+        purchaseQuantity: row['Purchase Quantity'] || row['purchaseQuantity'],
+        purchaseRate: row['Purchase Rate'] || row['purchaseRate'],
+        saleComments: row['Sale Comments'] || row['saleComments'],
+        purchaseComments: row['Purchase Comments'] || row['purchaseComments'],
+        finalComments: row['Final Comments'] || row['finalComments'],
+        warehouse: row['Warehouse'] || row['warehouse']
+      }))
+    } catch (error) {
+      console.error('Failed to get sheet data:', error)
+      return []
+    }
   }
 
   async getDatabaseData(): Promise<any[]> {
