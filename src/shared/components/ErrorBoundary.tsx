@@ -1,7 +1,7 @@
 import React, { Component, ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
-import { eventBus, EVENT_TYPES } from '../services/eventBus'
+import { eventBus } from '../services/eventBus'
 
 interface Props {
   children: ReactNode

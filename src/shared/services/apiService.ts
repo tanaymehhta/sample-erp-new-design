@@ -1,6 +1,6 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
+import axios, { AxiosInstance, AxiosResponse } from 'axios'
 import { ApiResponse, BaseApiService, ApiError } from '../types/api'
-import { eventBus, EVENT_TYPES } from './eventBus'
+import { eventBus } from './eventBus'
 
 export interface ApiServiceInterface extends BaseApiService {}
 

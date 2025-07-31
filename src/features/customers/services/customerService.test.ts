@@ -1,4 +1,4 @@
-import { CustomerService } from './customerService'
+import CustomerServiceClass from './customerService' // Import the class directly
 import { ApiResponse } from '../../../shared/types/api'
 import { Customer, Supplier, CreateCustomerRequest, CreateSupplierRequest } from '../types'
 
@@ -6,10 +6,16 @@ import { Customer, Supplier, CreateCustomerRequest, CreateSupplierRequest } from
 const mockApiService = {
   post: jest.fn(),
   get: jest.fn(),
+  put: jest.fn(), // Added
+  delete: jest.fn(), // Added
 }
 
 const mockEventBus = {
   emit: jest.fn(),
+  subscribe: jest.fn(),
+  getEventHistory: jest.fn(),
+  clearHistory: jest.fn(),
+  getSubscriptions: jest.fn(),
 }
 
 // Mock the imports
@@ -26,18 +32,18 @@ jest.mock('../../../shared/services/eventBus', () => ({
 }))
 
 describe('CustomerService', () => {
-  let customerService: CustomerService
+  let testCustomerServiceInstance: CustomerServiceClass // Renamed for clarity
   
   beforeEach(() => {
-    customerService = new CustomerService()
+    testCustomerServiceInstance = new CustomerServiceClass(mockApiService, mockEventBus) // Correct instantiation
     jest.clearAllMocks()
   })
 
   describe('getCustomers', () => {
     it('should fetch customers without affecting other features', async () => {
       const mockCustomers: Customer[] = [
-        { id: '1', partyName: 'Customer 1', contactPerson: 'John Doe', phone: '123456789' },
-        { id: '2', partyName: 'Customer 2', contactPerson: 'Jane Smith', phone: '987654321' },
+        { id: '1', partyName: 'Customer 1', contactPerson: 'John Doe', phone: '123456789', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: '2', partyName: 'Customer 2', contactPerson: 'Jane Smith', phone: '987654321', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
       ]
       
       const mockResponse: ApiResponse<Customer[]> = {
@@ -47,7 +53,7 @@ describe('CustomerService', () => {
 
       mockApiService.get.mockResolvedValue(mockResponse)
 
-      const result = await customerService.getCustomers()
+      const result = await testCustomerServiceInstance.getCustomers() // Use new instance name
 
       expect(mockApiService.get).toHaveBeenCalledWith('/customers')
       expect(result).toEqual(mockResponse)
@@ -57,15 +63,15 @@ describe('CustomerService', () => {
       const error = new Error('Network error')
       mockApiService.get.mockRejectedValue(error)
 
-      await expect(customerService.getCustomers()).rejects.toThrow('Network error')
+      await expect(testCustomerServiceInstance.getCustomers()).rejects.toThrow('Network error') // Use new instance name
     })
   })
 
   describe('getSuppliers', () => {
     it('should fetch suppliers without affecting other features', async () => {
       const mockSuppliers: Supplier[] = [
-        { id: '1', partyName: 'Supplier 1', contactPerson: 'Bob Wilson', phone: '555123456' },
-        { id: '2', partyName: 'Supplier 2', contactPerson: 'Alice Brown', phone: '555987654' },
+        { id: '1', partyName: 'Supplier 1', contactPerson: 'Bob Wilson', phone: '555123456', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: '2', partyName: 'Supplier 2', contactPerson: 'Alice Brown', phone: '555987654', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
       ]
       
       const mockResponse: ApiResponse<Supplier[]> = {
@@ -75,7 +81,7 @@ describe('CustomerService', () => {
 
       mockApiService.get.mockResolvedValue(mockResponse)
 
-      const result = await customerService.getSuppliers()
+      const result = await testCustomerServiceInstance.getSuppliers() // Use new instance name
 
       expect(mockApiService.get).toHaveBeenCalledWith('/suppliers')
       expect(result).toEqual(mockResponse)
@@ -91,7 +97,7 @@ describe('CustomerService', () => {
         email: 'john@example.com',
       }
 
-      const mockCustomer: Customer = { id: '1', ...customerData }
+      const mockCustomer: Customer = { id: '1', ...customerData, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
       const mockResponse: ApiResponse<Customer> = {
         success: true,
         data: mockCustomer,
@@ -99,7 +105,7 @@ describe('CustomerService', () => {
 
       mockApiService.post.mockResolvedValue(mockResponse)
 
-      const result = await customerService.createCustomer(customerData)
+      const result = await testCustomerServiceInstance.createCustomer(customerData) // Use new instance name
 
       expect(mockApiService.post).toHaveBeenCalledWith('/customers', customerData)
       expect(mockEventBus.emit).toHaveBeenCalledWith('customer.added', mockCustomer, 'CustomerService')
@@ -116,7 +122,7 @@ describe('CustomerService', () => {
       const error = new Error('Validation error')
       mockApiService.post.mockRejectedValue(error)
 
-      await expect(customerService.createCustomer(customerData)).rejects.toThrow('Validation error')
+      await expect(testCustomerServiceInstance.createCustomer(customerData)).rejects.toThrow('Validation error') // Use new instance name
     })
   })
 
@@ -126,10 +132,9 @@ describe('CustomerService', () => {
         partyName: 'New Supplier',
         contactPerson: 'Jane Smith',
         phone: '987654321',
-        company: 'Supplier Corp',
       }
 
-      const mockSupplier: Supplier = { id: '1', ...supplierData }
+      const mockSupplier: Supplier = { id: '1', ...supplierData, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
       const mockResponse: ApiResponse<Supplier> = {
         success: true,
         data: mockSupplier,
@@ -137,7 +142,7 @@ describe('CustomerService', () => {
 
       mockApiService.post.mockResolvedValue(mockResponse)
 
-      const result = await customerService.createSupplier(supplierData)
+      const result = await testCustomerServiceInstance.createSupplier(supplierData) // Use new instance name
 
       expect(mockApiService.post).toHaveBeenCalledWith('/suppliers', supplierData)
       expect(mockEventBus.emit).toHaveBeenCalledWith('supplier.added', mockSupplier, 'CustomerService')
@@ -152,7 +157,9 @@ describe('CustomerService', () => {
         id: customerId, 
         partyName: 'Customer 1', 
         contactPerson: 'John Doe', 
-        phone: '123456789' 
+        phone: '123456789',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }
       
       const mockResponse: ApiResponse<Customer> = {
@@ -162,7 +169,7 @@ describe('CustomerService', () => {
 
       mockApiService.get.mockResolvedValue(mockResponse)
 
-      const result = await customerService.getCustomer(customerId)
+      const result = await testCustomerServiceInstance.getCustomer(customerId) // Use new instance name
 
       expect(mockApiService.get).toHaveBeenCalledWith('/customers/1')
       expect(result).toEqual(mockResponse)
@@ -176,7 +183,9 @@ describe('CustomerService', () => {
         id: supplierId, 
         partyName: 'Supplier 1', 
         contactPerson: 'Jane Smith', 
-        phone: '987654321' 
+        phone: '987654321',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }
       
       const mockResponse: ApiResponse<Supplier> = {
@@ -186,7 +195,7 @@ describe('CustomerService', () => {
 
       mockApiService.get.mockResolvedValue(mockResponse)
 
-      const result = await customerService.getSupplier(supplierId)
+      const result = await testCustomerServiceInstance.getSupplier(supplierId) // Use new instance name
 
       expect(mockApiService.get).toHaveBeenCalledWith('/suppliers/1')
       expect(result).toEqual(mockResponse)
@@ -203,12 +212,12 @@ describe('CustomerService', () => {
 
       const mockResponse: ApiResponse<Customer> = {
         success: true,
-        data: { id: '1', ...customerData },
+        data: { id: '1', ...customerData, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
       }
 
       mockApiService.post.mockResolvedValue(mockResponse)
 
-      await customerService.createCustomer(customerData)
+      await testCustomerServiceInstance.createCustomer(customerData) // Use new instance name
 
       // Verify only customer-specific endpoints are called
       expect(mockApiService.post).toHaveBeenCalledWith('/customers', customerData)
@@ -224,12 +233,12 @@ describe('CustomerService', () => {
 
       const mockResponse: ApiResponse<Supplier> = {
         success: true,
-        data: { id: '1', ...supplierData },
+        data: { id: '1', ...supplierData, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
       }
 
       mockApiService.post.mockResolvedValue(mockResponse)
 
-      await customerService.createSupplier(supplierData)
+      await testCustomerServiceInstance.createSupplier(supplierData) // Use new instance name
 
       // Verify no direct calls to other feature endpoints
       expect(mockApiService.post).not.toHaveBeenCalledWith('/inventory', expect.any(Object))
@@ -243,7 +252,7 @@ describe('CustomerService', () => {
         phone: '123456789',
       }
 
-      const mockCustomer: Customer = { id: '1', ...customerData }
+      const mockCustomer: Customer = { id: '1', ...customerData, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
       const mockResponse: ApiResponse<Customer> = {
         success: true,
         data: mockCustomer,
@@ -251,7 +260,7 @@ describe('CustomerService', () => {
 
       mockApiService.post.mockResolvedValue(mockResponse)
 
-      await customerService.createCustomer(customerData)
+      await testCustomerServiceInstance.createCustomer(customerData) // Use new instance name
 
       // Verify event emission for loose coupling
       expect(mockEventBus.emit).toHaveBeenCalledWith('customer.added', mockCustomer, 'CustomerService')

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { inventoryService, InventoryItem } from '../services/inventoryService'
-import { ApiResponse } from '../../../shared/types/api'
 
 export interface InventorySummary {
   totalItems: number

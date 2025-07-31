@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { AlertCircle, CheckCircle, Clock, RefreshCw, Settings } from 'lucide-react'
 import { SyncResult, SyncComparison, SyncConfig } from '../types'
 import { syncService } from '../services/syncApiService'

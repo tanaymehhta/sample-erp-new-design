@@ -30,8 +30,7 @@ export default function SearchableAutoComplete({
   className,
   error,
   label,
-  required,
-  searchFields = ['label', 'value']
+  required
 }: SearchableAutoCompleteProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')

@@ -148,7 +148,7 @@ function CustomerRow({ customer, onSelect, isExpanded, onToggleExpand }: Custome
                 <div>
                   <p className="text-xs text-gray-500 mb-2">Top Products</p>
                   <div className="space-y-1">
-                    {customer.productMix.slice(0, 3).map((product, index) => (
+                    {customer.productMix.slice(0, 3).map((product) => (
                       <div key={product.productId} className="flex justify-between text-sm">
                         <span className="text-gray-700">{product.productName}</span>
                         <span className="text-gray-900 font-medium">{product.percentage.toFixed(1)}%</span>

@@ -6,10 +6,7 @@ import {
   AnalyticsData, 
   TimeRange, 
   AnalyticsConfig,
-  CustomerMetrics,
-  SummaryStats,
-  TrendData,
-  AlertData
+  CustomerMetrics
 } from '../types'
 
 import { 

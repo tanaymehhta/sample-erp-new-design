@@ -285,7 +285,7 @@ class DealSyncService implements SyncServiceInterface {
           databaseValue: dbValue,
           sheetsValue: sheetValue,
           lastModified: {
-            database: dbDeal.updatedAt || dbDeal.createdAt,
+            database: new Date(dbDeal.updatedAt || dbDeal.createdAt),
             sheets: undefined // Google Sheets doesn't track modification time
           }
         })

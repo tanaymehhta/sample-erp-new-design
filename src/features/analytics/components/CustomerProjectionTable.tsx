@@ -1,20 +1,14 @@
-// Customer Projection Table - Spreadsheet-style sales tracking
-// Following CLAUDE.md: Single responsibility, reusable component
-
 import { useState, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { 
   ChevronDown, 
   ChevronRight,
-  TrendingUp, 
-  TrendingDown,
   ArrowUp,
   ArrowDown,
   AlertTriangle,
   Zap
 } from 'lucide-react'
 import { CustomerMetrics } from '../types'
-import { formatToDDMMYYYY } from '../utils/dateUtils'
 
 interface CustomerProjectionTableProps {
   customers: CustomerMetrics[]
@@ -164,7 +158,7 @@ function CustomerProjectionTable({ customers, loading = false }: CustomerProject
     return `${Math.round(volume).toLocaleString()} MT`
   }
 
-  const getTrendIcon = (trend: string, growth: number) => {
+  const getTrendIcon = (growth: number) => {
     if (growth > 10) return <ArrowUp className="w-4 h-4 text-green-600" />
     if (growth < -10) return <ArrowDown className="w-4 h-4 text-red-600" />
     return <div className="w-4 h-4 border border-gray-400 rounded-sm"></div>
@@ -172,10 +166,10 @@ function CustomerProjectionTable({ customers, loading = false }: CustomerProject
 
   const getChangeIndicator = (change: CustomerProjectionData['suddenChange']) => {
     if (change.type === 'spike') {
-      return <Zap className="w-4 h-4 text-yellow-500" title={`Sudden spike: +${change.magnitude.toFixed(1)}%`} />
+      return <Zap className="w-4 h-4 text-yellow-500" />
     }
     if (change.type === 'drop') {
-      return <AlertTriangle className="w-4 h-4 text-red-500" title={`Sudden drop: -${change.magnitude.toFixed(1)}%`} />
+      return <AlertTriangle className="w-4 h-4 text-red-500" />
     }
     return null
   }
@@ -299,7 +293,7 @@ function CustomerProjectionTable({ customers, loading = false }: CustomerProject
                 </td>
                 
                 <td className="py-3 px-2 text-center">
-                  {getTrendIcon(data.overallTrend, data.volumeGrowthRate)}
+                  {getTrendIcon(data.volumeGrowthRate)}
                 </td>
                 
                 <td className="py-3 px-2 text-center">

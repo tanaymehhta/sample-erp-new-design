@@ -1,4 +1,4 @@
-import { SystemEvent, EventSubscriber } from '../types/api'
+import { SystemEvent } from '../types/api'
 
 type EventCallback = (event: SystemEvent) => void
 

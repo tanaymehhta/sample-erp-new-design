@@ -145,7 +145,7 @@ interface PurchaseDetailRowProps {
   index: number
 }
 
-function PurchaseDetailRow({ purchase, index }: PurchaseDetailRowProps) {
+function PurchaseDetailRow({ purchase }: PurchaseDetailRowProps) {
   const purchaseValue = purchase.quantity * purchase.rate
 
   return (
