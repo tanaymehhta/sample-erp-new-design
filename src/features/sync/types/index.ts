@@ -1,3 +1,5 @@
+import { Deal } from '../../deals/types'
+
 export interface SyncServiceInterface {
   syncDealToSheets(dealId: string): Promise<SyncResult>
   syncAllDealsToSheets(): Promise<SyncResult>

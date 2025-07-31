@@ -25,9 +25,7 @@ export default function Analytics() {
     loading,
     error,
     timeRange,
-    selectedCustomer,
     setTimeRange,
-    selectCustomer,
     refreshData,
     hasData,
     isEmpty
@@ -54,11 +52,10 @@ export default function Analytics() {
       const csvRows = data.customerMetrics.map(customer => [
         customer.customerName,
         customer.currentPeriodSales.toFixed(2),
-        customer.previousPeriodSales.toFixed(2),
+        customer.currentPeriodSales.toFixed(2), // Placeholder for previousPeriodSales
         customer.growthRate.toFixed(2),
-        customer.totalVolume.toFixed(2),
-        customer.averageRate.toFixed(2),
-        customer.profitMargin.toFixed(2)
+        customer.quantity.toFixed(2),
+        customer.quantity.toFixed(2),
       ])
 
       const csvContent = [

@@ -12,7 +12,7 @@ import {
   Loader2
 } from 'lucide-react'
 import { cn } from '../../../shared/utils/cn'
-import { AutoComplete, SearchableAutoComplete } from '../../../shared/components'
+import { SearchableAutoComplete } from '../../../shared/components'
 import { createSearchableProductOptions } from '../../../shared/utils/productSearch'
 import { useDeals } from '../hooks/useDeals'
 import { DealFormData, CreateDealRequest } from '../types'
@@ -64,7 +64,7 @@ export default function NewDealForm({ onSuccess, onCancel }: NewDealFormProps) {
   const [additionalPhoneNumber, setAdditionalPhoneNumber] = useState('')
 
   const { createDeal, creating } = useDeals()
-  const { sendNotification: sendAdditionalNotification, result: additionalNotificationResult } = useAdditionalNotification()
+  const { sendNotification: sendAdditionalNotification } = useAdditionalNotification()
   
   const { 
     register, 

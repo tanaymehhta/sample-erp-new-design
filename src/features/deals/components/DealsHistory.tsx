@@ -1,28 +1,49 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { History, Search, Download, Filter, Calendar, Eye } from 'lucide-react'
+import { History, Search, Download, Calendar } from 'lucide-react'
 import { useDeals } from '../hooks/useDeals'
+import { useBusinessFilters } from '../hooks/useBusinessFilters'
 import { DealFilters, Deal } from '../types'
 import { LoadingSpinner } from '../../../shared/components'
 import { cn } from '../../../shared/utils/cn'
 import DealRowActions from './DealRowActions'
 import EditDealModal from './EditDealModal'
 import DeleteConfirmation from './DeleteConfirmation'
+import QuickFilters from './QuickFilters'
+import SmartInsights from './SmartInsights'
 
 interface DealsHistoryProps {
   onViewDeal?: (dealId: string) => void
 }
 
-export default function DealsHistory({ onViewDeal }: DealsHistoryProps) {
-  const [filters, setFilters] = useState<DealFilters>({})
-  const [searchTerm, setSearchTerm] = useState('')
-  const [showFilters, setShowFilters] = useState(false)
-  
+export default function DealsHistory({}: DealsHistoryProps) {
   // Modal states
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null)
   const [deletingDeal, setDeletingDeal] = useState<Deal | null>(null)
+  
+  // Legacy state (to prevent cache issues)
+  const showFilters = false
 
-  const { deals, loading, error, fetchDeals, refreshDeals, pagination, goToPage, nextPage, prevPage } = useDeals()
+  // Get all deals (we'll filter client-side for business intelligence)
+  const { deals: allDeals, loading, error, refreshDeals } = useDeals()
+  
+  // Business filtering logic
+  const { 
+    filters, 
+    setFilters, 
+    insights, 
+    filteredDeals,
+    availableCustomers,
+    availableProducts,
+    availableSuppliers 
+  } = useBusinessFilters(allDeals)
+
+  // Pagination for filtered deals (client-side)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 50
+  const totalPages = Math.ceil(filteredDeals.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const paginatedDeals = filteredDeals.slice(startIndex, startIndex + itemsPerPage)
 
   // Auto-refresh when deals likely changed
   useEffect(() => {
@@ -38,22 +59,10 @@ export default function DealsHistory({ onViewDeal }: DealsHistoryProps) {
     }
   }, [refreshDeals])
 
-  // Apply filters when they change
+  // Reset pagination when filters change
   useEffect(() => {
-    const delayedFetch = setTimeout(() => {
-      const appliedFilters: DealFilters = {
-        ...filters
-      }
-      
-      if (searchTerm) {
-        appliedFilters.saleParty = searchTerm
-      }
-      
-      fetchDeals(appliedFilters, 1)
-    }, 300)
-
-    return () => clearTimeout(delayedFetch)
-  }, [filters, searchTerm, fetchDeals])
+    setCurrentPage(1)
+  }, [filters])
 
   const handleExport = async () => {
     try {
@@ -93,12 +102,12 @@ export default function DealsHistory({ onViewDeal }: DealsHistoryProps) {
     setDeletingDeal(deal)
   }
 
-  const handleDealSaved = (updatedDeal: Deal) => {
+  const handleDealSaved = () => {
     // The hook will automatically update via event bus
     refreshDeals()
   }
 
-  const handleDealDeleted = (dealId: string) => {
+  const handleDealDeleted = () => {
     // The hook will automatically update via event bus
     refreshDeals()
   }
@@ -139,22 +148,9 @@ export default function DealsHistory({ onViewDeal }: DealsHistoryProps) {
         </div>
         
         <div className="flex space-x-3">
-          <motion.button 
-            onClick={() => setShowFilters(!showFilters)}
-            className={cn(
-              "btn-secondary flex items-center space-x-2",
-              showFilters && "bg-primary-100 text-primary-700"
-            )}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <Filter className="w-4 h-4" />
-            <span>Filter</span>
-          </motion.button>
-          
           <motion.button
             onClick={handleExport}
-            disabled={deals.length === 0}
+            disabled={paginatedDeals.length === 0}
             className="btn-primary flex items-center space-x-2 disabled:opacity-50"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -165,8 +161,23 @@ export default function DealsHistory({ onViewDeal }: DealsHistoryProps) {
         </div>
       </div>
 
-      {/* Filters */}
-      {showFilters && (
+      {/* Business Filters */}
+      <QuickFilters
+        filters={filters}
+        onFiltersChange={setFilters}
+        customers={availableCustomers}
+        onSearchCustomers={(query) => 
+          availableCustomers.filter(c => 
+            c.toLowerCase().includes(query.toLowerCase())
+          ).slice(0, 10)
+        }
+      />
+
+      {/* Smart Insights */}
+      <SmartInsights insights={insights} isLoading={loading} />
+
+      {/* Legacy filters removed - now using QuickFilters */}
+      {false && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
@@ -229,35 +240,14 @@ export default function DealsHistory({ onViewDeal }: DealsHistoryProps) {
         </motion.div>
       )}
 
-      {/* Search and Content */}
+      {/* Content */}
       <div className="card">
-        <div className="flex items-center space-x-4 mb-6">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search deals by customer, product, or date..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="input-field pl-10"
-            />
-          </div>
-          
-          <motion.button
-            onClick={refreshDeals}
-            className="btn-secondary"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <Calendar className="w-4 h-4" />
-          </motion.button>
-        </div>
 
         {loading ? (
           <div className="text-center py-12">
             <LoadingSpinner size="lg" text="Loading deals..." />
           </div>
-        ) : deals.length === 0 ? (
+        ) : paginatedDeals.length === 0 ? (
           <div className="text-center py-12">
             <div className="bg-gray-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
               <History className="w-8 h-8 text-gray-400" />
@@ -290,7 +280,7 @@ export default function DealsHistory({ onViewDeal }: DealsHistoryProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {deals.map((deal, index) => (
+                  {paginatedDeals.map((deal, index) => (
                     <motion.tr
                       key={deal.id}
                       initial={{ opacity: 0 }}
@@ -343,7 +333,7 @@ export default function DealsHistory({ onViewDeal }: DealsHistoryProps) {
 
             {/* Mobile Cards */}
             <div className="lg:hidden space-y-4">
-              {deals.map((deal, index) => (
+              {paginatedDeals.map((deal, index) => (
                 <motion.div
                   key={deal.id}
                   initial={{ opacity: 0 }}
@@ -388,37 +378,36 @@ export default function DealsHistory({ onViewDeal }: DealsHistoryProps) {
             {/* Pagination info */}
             <div className="mt-6 flex justify-between items-center text-sm text-gray-600">
               <span>
-                Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} deals
+                Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredDeals.length)} of {filteredDeals.length} deals
               </span>
-              {deals.length > 0 && (
+              {paginatedDeals.length > 0 && (
                 <span>
-                  Total Value: {formatCurrency(
-                    deals.reduce((sum, deal) => sum + (deal.quantitySold * deal.saleRate), 0)
+                  Page Value: {formatCurrency(
+                    paginatedDeals.reduce((sum, deal) => sum + (deal.quantitySold * deal.saleRate), 0)
                   )}
                 </span>
               )}
             </div>
 
             {/* Pagination Controls */}
-            {pagination.totalPages > 1 && (
+            {totalPages > 1 && (
               <div className="mt-6 flex items-center justify-center">
                 <div className="flex items-center space-x-1 bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
                   <button
-                    onClick={prevPage}
-                    disabled={pagination.page <= 1}
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage <= 1}
                     className="px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     ←
                   </button>
                   
-                  {Array.from({ length: Math.min(pagination.totalPages, 10) }, (_, i) => {
+                  {Array.from({ length: Math.min(totalPages, 10) }, (_, i) => {
                     let pageNum;
-                    if (pagination.totalPages <= 10) {
+                    if (totalPages <= 10) {
                       pageNum = i + 1;
                     } else {
-                      const current = pagination.page;
-                      const start = Math.max(1, current - 4);
-                      const end = Math.min(pagination.totalPages, start + 9);
+                      const start = Math.max(1, currentPage - 4);
+                      const end = Math.min(totalPages, start + 9);
                       pageNum = start + i;
                       if (pageNum > end) return null;
                     }
@@ -426,10 +415,10 @@ export default function DealsHistory({ onViewDeal }: DealsHistoryProps) {
                     return (
                       <button
                         key={pageNum}
-                        onClick={() => goToPage(pageNum)}
+                        onClick={() => setCurrentPage(pageNum)}
                         className={cn(
                           "px-3 py-2 text-sm font-medium rounded-md min-w-[40px]",
-                          pageNum === pagination.page
+                          pageNum === currentPage
                             ? "bg-blue-600 text-white shadow-md"
                             : "text-gray-700 hover:bg-gray-100"
                         )}
@@ -440,8 +429,8 @@ export default function DealsHistory({ onViewDeal }: DealsHistoryProps) {
                   })}
 
                   <button
-                    onClick={nextPage}
-                    disabled={pagination.page >= pagination.totalPages}
+                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage >= totalPages}
                     className="px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     →

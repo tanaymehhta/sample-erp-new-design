@@ -51,6 +51,53 @@ export interface DealFilters {
   maxAmount?: number
   page?: number
   limit?: number
+  // New business-friendly filters
+  customers?: string[]
+  suppliers?: string[]
+  products?: string[]
+  dealSource?: ('new' | 'inventory')[]
+  warehouse?: string[]
+  timeRange?: TimeRange
+  quickFilter?: string
+}
+
+export type TimeRange = 
+  | 'today'
+  | 'this-week' 
+  | 'this-month'
+  | 'last-month'
+  | 'this-quarter'
+  | 'last-quarter'
+  | 'this-year'
+  | 'custom'
+
+export interface BusinessFilter {
+  timeRange: TimeRange
+  customers: string[]
+  products: string[]
+  suppliers: string[]
+  deliveryMethod: ('delivered' | 'pickup')[]
+  dealSource: ('new' | 'inventory')[]
+  warehouse: string[]
+  valueRange: [number, number] | null
+  quantityRange: [number, number] | null
+  searchTerm: string
+}
+
+export interface FilterPreset {
+  id: string
+  name: string
+  description: string
+  filters: BusinessFilter
+  icon: string
+}
+
+export interface FilterInsights {
+  totalDeals: number
+  totalValue: number
+  topCustomer: string | null
+  avgDealSize: number
+  timeFrameDescription: string
 }
 
 export interface DealSummary {

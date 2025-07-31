@@ -2,10 +2,10 @@
 // Following CLAUDE.md: Dependency injection via hooks, interface implementation
 
 import { useMemo } from 'react'
-import { DealDataProvider, Deal, Customer, TimeRange } from '../types'
+import { DealDataProvider, Deal, Customer } from '../types'
 
 class ApiDealDataProvider implements DealDataProvider {
-  async getDeals(timeRange?: TimeRange): Promise<Deal[]> {
+  async getDeals(): Promise<Deal[]> {
     try {
       console.log('ApiDealDataProvider: Fetching deals from /api/deals')
       const response = await fetch('/api/deals')
@@ -63,7 +63,8 @@ class ApiDealDataProvider implements DealDataProvider {
           }
         } catch (error) {
           console.error(`ApiDealDataProvider: Error processing deal ${index}:`, error, deal)
-          throw new Error(`Invalid deal data at index ${index}: ${error.message}`)
+          const message = error instanceof Error ? error.message : 'Unknown error'
+          throw new Error(`Invalid deal data at index ${index}: ${message}`)
         }
       })
       
@@ -72,7 +73,8 @@ class ApiDealDataProvider implements DealDataProvider {
       
     } catch (error) {
       console.error('ApiDealDataProvider: Error fetching/processing deals:', error)
-      throw new Error(`Failed to load deals: ${error.message}`)
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      throw new Error(`Failed to load deals: ${message}`)
     }
   }
 
@@ -116,7 +118,8 @@ class ApiDealDataProvider implements DealDataProvider {
           }
         } catch (error) {
           console.error(`ApiDealDataProvider: Error processing customer ${index}:`, error, customer)
-          throw new Error(`Invalid customer data at index ${index}: ${error.message}`)
+          const message = error instanceof Error ? error.message : 'Unknown error'
+          throw new Error(`Invalid customer data at index ${index}: ${message}`)
         }
       })
       
@@ -125,7 +128,8 @@ class ApiDealDataProvider implements DealDataProvider {
       
     } catch (error) {
       console.error('ApiDealDataProvider: Error fetching/processing customers:', error)
-      throw new Error(`Failed to load customers: ${error.message}`)
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      throw new Error(`Failed to load customers: ${message}`)
     }
   }
 }

@@ -83,7 +83,7 @@ class ProductService implements ProductServiceInterface {
     try {
       console.log('📦 ProductService: Deleting product', id)
       
-      const response = await apiService.delete<void>(`${this.endpoint}/remove`, { id })
+      const response = await apiService.delete<void>(`${this.endpoint}/remove/${id}`)
       
       if (response.success) {
         eventBus.emit('product.deleted', { id }, 'ProductService')

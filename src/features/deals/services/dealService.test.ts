@@ -1,6 +1,6 @@
-import { DealService } from './dealService'
+import DealServiceClass from './dealService' // Import the class directly
 import { ApiResponse, PaginatedResponse } from '../../../shared/types/api'
-import { Deal, CreateDealRequest, DealFilters, DealSummary } from '../types'
+import { Deal, CreateDealRequest, DealFilters } from '../types'
 import { createTestContainer } from '../../../shared/di/container'
 
 // Mock dependencies
@@ -20,7 +20,7 @@ const mockEventBus = {
 }
 
 describe('DealService', () => {
-  let dealService: DealService
+  let dealService: DealServiceClass // Use the imported class as a type
   let container: any
   
   beforeEach(() => {
@@ -33,7 +33,7 @@ describe('DealService', () => {
     // Register mocked services
     container.register('apiService', () => mockApiService)
     container.register('eventBus', () => mockEventBus)
-    container.register('dealService', (c: any) => new DealService(c.get('apiService'), c.get('eventBus')))
+    container.register('dealService', (c: any) => new DealServiceClass(c.get('apiService'), c.get('eventBus')))
     
     dealService = container.get('dealService')
   })
@@ -43,16 +43,20 @@ describe('DealService', () => {
       const dealData: CreateDealRequest = {
         date: '01-01-2024',
         saleParty: 'Test Customer',
-        material: 'PVC',
         quantitySold: 100,
         saleRate: 50,
         purchaseParty: 'Test Supplier',
         purchaseQuantity: 100,
         purchaseRate: 45,
         saleSource: 'new',
+        productCode: 'PVC',
+        grade: 'A',
+        company: 'Test',
+        specificGrade: 'A1',
+        deliveryTerms: 'delivered'
       }
 
-      const mockDeal: Deal = { id: '1', ...dealData }
+      const mockDeal: Deal = { id: '1', ...dealData, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), grade: dealData.grade || '', company: dealData.company || '', specificGrade: dealData.specificGrade || '' }
       const mockResponse: ApiResponse<Deal> = {
         success: true,
         data: mockDeal,
@@ -71,13 +75,17 @@ describe('DealService', () => {
       const dealData: CreateDealRequest = {
         date: '01-01-2024',
         saleParty: 'Test Customer',
-        material: 'PVC',
         quantitySold: 100,
         saleRate: 50,
         purchaseParty: 'Test Supplier',
         purchaseQuantity: 100,
         purchaseRate: 45,
         saleSource: 'new',
+        productCode: 'PVC',
+        grade: 'A',
+        company: 'Test',
+        specificGrade: 'A1',
+        deliveryTerms: 'delivered'
       }
 
       const error = new Error('API Error')
@@ -91,14 +99,14 @@ describe('DealService', () => {
   describe('getDeals', () => {
     it('should fetch deals without affecting other features', async () => {
       const mockDeals: Deal[] = [
-        { id: '1', date: '01-01-2024', saleParty: 'Customer 1', material: 'PVC', quantitySold: 100, saleRate: 50 },
-        { id: '2', date: '02-01-2024', saleParty: 'Customer 2', material: 'HDPE', quantitySold: 200, saleRate: 60 },
+        { id: '1', date: '01-01-2024', saleParty: 'Customer 1', quantitySold: 100, saleRate: 50, productCode: 'PVC', grade: 'A', company: 'Test', specificGrade: 'A1', purchaseParty: 'S1', purchaseQuantity: 100, purchaseRate: 45, saleSource: 'new', deliveryTerms: 'delivered', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: '2', date: '02-01-2024', saleParty: 'Customer 2', quantitySold: 200, saleRate: 60, productCode: 'HDPE', grade: 'B', company: 'Test2', specificGrade: 'B2', purchaseParty: 'S2', purchaseQuantity: 200, purchaseRate: 55, saleSource: 'inventory', deliveryTerms: 'pickup', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
       ]
       
       const mockResponse: PaginatedResponse<Deal> = {
         success: true,
         data: mockDeals,
-        pagination: { page: 1, limit: 10, total: 2 },
+        pagination: { page: 1, limit: 10, total: 2, totalPages: 1 },
       }
 
       mockApiService.get.mockResolvedValue(mockResponse)
@@ -110,11 +118,11 @@ describe('DealService', () => {
     })
 
     it('should fetch deals with filters', async () => {
-      const filters: DealFilters = { material: 'PVC', dateFrom: '01-01-2024' }
+      const filters: DealFilters = { productCode: 'PVC', dateFrom: '01-01-2024' }
       const mockResponse: PaginatedResponse<Deal> = {
         success: true,
         data: [],
-        pagination: { page: 1, limit: 10, total: 0 },
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
       }
 
       mockApiService.get.mockResolvedValue(mockResponse)
@@ -128,14 +136,24 @@ describe('DealService', () => {
   describe('updateDeal', () => {
     it('should update deal and emit event', async () => {
       const dealId = '1'
-      const updateData: Partial<CreateDealRequest> = { quantitySold: 150 }
+      const updateData: Partial<Deal> = { quantitySold: 150 }
       const mockUpdatedDeal: Deal = { 
         id: dealId, 
         date: '01-01-2024', 
         saleParty: 'Customer', 
-        material: 'PVC', 
         quantitySold: 150, 
-        saleRate: 50 
+        saleRate: 50, 
+        productCode: 'PVC', 
+        grade: 'A', 
+        company: 'Test', 
+        specificGrade: 'A1', 
+        purchaseParty: 'S1', 
+        purchaseQuantity: 150, 
+        purchaseRate: 45, 
+        saleSource: 'new', 
+        deliveryTerms: 'delivered', 
+        createdAt: new Date().toISOString(), 
+        updatedAt: new Date().toISOString() 
       }
       
       const mockResponse: ApiResponse<Deal> = {
@@ -173,18 +191,22 @@ describe('DealService', () => {
       const dealData: CreateDealRequest = {
         date: '01-01-2024',
         saleParty: 'Test Customer',
-        material: 'PVC',
         quantitySold: 100,
         saleRate: 50,
         purchaseParty: 'Test Supplier',
         purchaseQuantity: 100,
         purchaseRate: 45,
         saleSource: 'new',
+        productCode: 'PVC',
+        grade: 'A',
+        company: 'Test',
+        specificGrade: 'A1',
+        deliveryTerms: 'delivered'
       }
 
       const mockResponse: ApiResponse<Deal> = {
         success: true,
-        data: { id: '1', ...dealData },
+        data: { id: '1', ...dealData, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), grade: dealData.grade || '', company: dealData.company || '', specificGrade: dealData.specificGrade || '' },
       }
 
       mockApiService.post.mockResolvedValue(mockResponse)
@@ -200,18 +222,22 @@ describe('DealService', () => {
       const dealData: CreateDealRequest = {
         date: '01-01-2024',
         saleParty: 'Test Customer',
-        material: 'PVC',
         quantitySold: 100,
         saleRate: 50,
         purchaseParty: 'Test Supplier',
         purchaseQuantity: 100,
         purchaseRate: 45,
         saleSource: 'new',
+        productCode: 'PVC',
+        grade: 'A',
+        company: 'Test',
+        specificGrade: 'A1',
+        deliveryTerms: 'delivered'
       }
 
       const mockResponse: ApiResponse<Deal> = {
         success: true,
-        data: { id: '1', ...dealData },
+        data: { id: '1', ...dealData, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), grade: dealData.grade || '', company: dealData.company || '', specificGrade: dealData.specificGrade || '' },
       }
 
       mockApiService.post.mockResolvedValue(mockResponse)
