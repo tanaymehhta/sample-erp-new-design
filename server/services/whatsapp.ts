@@ -11,7 +11,7 @@ interface DealSource {
   }
 }
 
-interface DealData {
+export interface DealData {
   id: string
   date: string
   saleParty: string
@@ -69,19 +69,14 @@ export async function sendWhatsAppMessage(phoneNumber: string, message: string) 
   }
 }
 
-function generateAccountsMessage(deal: DealData): string {
+function generateWhatsAppAccountsMessage(deal: DealData): string {
   let purchaseDetails = ''
   
   if (deal.sources && deal.sources.length > 1) {
     // Multi-source deal
-    purchaseDetails = `📦 Multi-Source Breakdown:
-${deal.sources.map((source, index) => 
+    purchaseDetails = `📦 Multi-Source Breakdown:\n${deal.sources.map((source, index) => 
   `${index + 1}. ${source.quantityUsed.toLocaleString()}kg from ${source.supplierName} @ ₹${source.costPerKg}/kg = ₹${(source.quantityUsed * source.costPerKg).toLocaleString()}`
-).join('\n')}
-
-⚠️ Multi-supplier coordination required
-Total Cost: ₹${deal.sources.reduce((sum, s) => sum + (s.quantityUsed * s.costPerKg), 0).toLocaleString()}
-Deal ID: #${deal.id.slice(-8).toUpperCase()}`
+).join('\n')}\n\n⚠️ Multi-supplier coordination required\nTotal Cost: ₹${deal.sources.reduce((sum, s) => sum + (s.quantityUsed * s.costPerKg), 0).toLocaleString()}\nDeal ID: #${deal.id.slice(-8).toUpperCase()}`
   } else if (deal.sources && deal.sources.length === 1) {
     // Single source from inventory
     const source = deal.sources[0]
@@ -109,7 +104,7 @@ ${deal.saleComments ? `Comments: ${deal.saleComments}` : ''}
 ${purchaseDetails}`
 }
 
-function generateLogisticsMessage(deal: DealData): string {
+function generateWhatsAppLogisticsMessage(deal: DealData): string {
   let supplierInfo = ''
   
   if (deal.sources && deal.sources.length > 1) {
@@ -133,7 +128,7 @@ ${supplierInfo}
 ${deal.warehouse ? `Warehouse: ${deal.warehouse}` : ''}`
 }
 
-function generateBossMessage(deal: DealData): string {
+function generateWhatsAppBossMessage(deal: DealData): string {
   let purchaseDetails = ''
   
   if (deal.sources && deal.sources.length > 1) {
@@ -191,7 +186,7 @@ export async function sendWhatsAppNotifications(deal: DealData) {
   try {
     // Send to Accounts Team
     if (PHONE_ACCOUNTS) {
-      const accountsMessage = generateAccountsMessage(deal)
+      const accountsMessage = generateWhatsAppAccountsMessage(deal)
       notifications.push(
         sendWhatsAppMessage(PHONE_ACCOUNTS, accountsMessage)
           .then(() => ({ recipient: 'accounts', status: 'success' }))
@@ -201,7 +196,7 @@ export async function sendWhatsAppNotifications(deal: DealData) {
     
     // Send to Logistics Team
     if (PHONE_LOGISTICS) {
-      const logisticsMessage = generateLogisticsMessage(deal)
+      const logisticsMessage = generateWhatsAppLogisticsMessage(deal)
       notifications.push(
         sendWhatsAppMessage(PHONE_LOGISTICS, logisticsMessage)
           .then(() => ({ recipient: 'logistics', status: 'success' }))
@@ -211,7 +206,7 @@ export async function sendWhatsAppNotifications(deal: DealData) {
     
     // Send to Boss 1
     if (PHONE_BOSS1) {
-      const bossMessage = generateBossMessage(deal)
+      const bossMessage = generateWhatsAppBossMessage(deal)
       notifications.push(
         sendWhatsAppMessage(PHONE_BOSS1, bossMessage)
           .then(() => ({ recipient: 'boss1', status: 'success' }))
@@ -221,7 +216,7 @@ export async function sendWhatsAppNotifications(deal: DealData) {
     
     // Send to Boss OG
     if (PHONE_BOSSOG) {
-      const bossMessage = generateBossMessage(deal)
+      const bossMessage = generateWhatsAppBossMessage(deal)
       notifications.push(
         sendWhatsAppMessage(PHONE_BOSSOG, bossMessage)
           .then(() => ({ recipient: 'bossog', status: 'success' }))
