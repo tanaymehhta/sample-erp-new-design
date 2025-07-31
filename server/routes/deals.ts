@@ -1,6 +1,6 @@
 import express from 'express'
 import { PrismaClient } from '@prisma/client'
-import { sendWhatsAppNotifications } from '../services/whatsapp'
+import { sendDealNotifications } from '../services/notificationService'
 import { syncToGoogleSheets } from '../services/googleSheets'
 import { inventoryManager } from '../services/inventoryManager'
 
@@ -156,8 +156,8 @@ router.post('/', async (req, res) => {
         finalComments: result.finalComments || undefined,
         warehouse: result.warehouse || undefined
       }
-      sendWhatsAppNotifications(dealForNotifications as any).catch(error => {
-        console.error('WhatsApp notification failed:', error)
+      sendDealNotifications(dealForNotifications as any).catch(error => {
+        console.error('Notification sending failed:', error)
       })
     }
 
