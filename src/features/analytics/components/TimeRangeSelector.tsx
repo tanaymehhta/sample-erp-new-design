@@ -1,167 +1,107 @@
-// Time Range Selector Component - Reusable date filtering
-// Following CLAUDE.md: Single responsibility, no external dependencies
-
-import { useState } from 'react'
-import { Calendar, ChevronDown } from 'lucide-react'
-import { TimeRange } from '../types'
-import { formatToDDMMYYYY, getDateRangeForPreset } from '../utils/dateUtils'
+import React, { useState } from 'react'
 
 interface TimeRangeSelectorProps {
-  timeRange: TimeRange
-  onChange: (timeRange: TimeRange) => void
+  value: string
+  onChange: (timeRange: string) => void
+  onCompareChange?: (compareWith: string | null) => void
+  compareWith?: string | null
   disabled?: boolean
 }
 
 interface PresetOption {
   label: string
-  value: TimeRange['preset']
-  getDateRange: () => { startDate: Date; endDate: Date }
+  value: string
 }
 
-const presetOptions: PresetOption[] = [
-  {
-    label: 'This Month',
-    value: 'thisMonth',
-    getDateRange: () => getDateRangeForPreset('thisMonth')
-  },
-  {
-    label: 'Last Month', 
-    value: 'lastMonth',
-    getDateRange: () => getDateRangeForPreset('lastMonth')
-  },
-  {
-    label: 'This Quarter',
-    value: 'quarter',
-    getDateRange: () => getDateRangeForPreset('quarter')
-  },
-  {
-    label: 'This Year',
-    value: 'year',
-    getDateRange: () => getDateRangeForPreset('year')
-  }
+const timeRangeOptions: PresetOption[] = [
+  { label: 'Today', value: 'today' },
+  { label: 'Yesterday', value: 'yesterday' },
+  { label: 'This Week', value: 'this-week' },
+  { label: 'Last Week', value: 'last-week' },
+  { label: 'This Month', value: 'this-month' },
+  { label: 'Last Month', value: 'last-month' },
+  { label: 'Last 7 Days', value: 'last-7-days' },
+  { label: 'Last 30 Days', value: 'last-30-days' },
+  { label: 'Last 90 Days', value: 'last-90-days' },
+  { label: 'This Quarter', value: 'this-quarter' },
+  { label: 'Last Quarter', value: 'last-quarter' },
+  { label: 'This Year', value: 'this-year' },
+  { label: 'Last Year', value: 'last-year' },
+  { label: 'Last 3 Years', value: 'last-3-years' },
+  { label: 'Last 5 Years', value: 'last-5-years' }
 ]
 
-export default function TimeRangeSelector({ timeRange, onChange, disabled = false }: TimeRangeSelectorProps) {
-  const [showCustomPicker, setShowCustomPicker] = useState(false)
-  const [customStartDate, setCustomStartDate] = useState(
-    timeRange.startDate.toISOString().split('T')[0]
-  )
-  const [customEndDate, setCustomEndDate] = useState(
-    timeRange.endDate.toISOString().split('T')[0]
-  )
+const compareOptions: PresetOption[] = [
+  { label: 'No Comparison', value: '' },
+  { label: 'Previous Period', value: 'previous-period' },
+  { label: 'Same Period Last Year', value: 'same-period-last-year' }
+]
 
-  const handlePresetChange = (preset: TimeRange['preset']) => {
-    if (preset === 'custom') {
-      setShowCustomPicker(true)
-      return
-    }
-
-    const option = presetOptions.find(opt => opt.value === preset)
-    if (option) {
-      const { startDate, endDate } = option.getDateRange()
-      onChange({
-        ...timeRange,
-        preset,
-        startDate,
-        endDate
-      })
-    }
-    setShowCustomPicker(false)
-  }
-
-  const handleCustomDateChange = () => {
-    const startDate = new Date(customStartDate)
-    const endDate = new Date(customEndDate)
-    
-    if (startDate <= endDate) {
-      onChange({
-        ...timeRange,
-        preset: 'custom',
-        startDate,
-        endDate
-      })
-      setShowCustomPicker(false)
-    }
-  }
-
+export function TimeRangeSelector({ 
+  value, 
+  onChange, 
+  onCompareChange, 
+  compareWith, 
+  disabled = false 
+}: TimeRangeSelectorProps) {
   const getCurrentLabel = () => {
-    if (timeRange.preset === 'custom') {
-      return `${formatToDDMMYYYY(timeRange.startDate)} - ${formatToDDMMYYYY(timeRange.endDate)}`
+    const option = timeRangeOptions.find(opt => opt.value === value)
+    return option?.label || 'This Month'
+  }
+
+  const handleCompareChange = (newCompareWith: string) => {
+    if (onCompareChange) {
+      onCompareChange(newCompareWith === '' ? null : newCompareWith)
     }
-    return presetOptions.find(opt => opt.value === timeRange.preset)?.label || 'This Month'
   }
 
   return (
-    <div className="relative">
-      <div className="flex items-center space-x-4">
-        {/* Preset Selector */}
-        <div className="relative">
+    <div className="flex items-center space-x-4">
+      {/* Time Range Selector */}
+      <div className="flex items-center space-x-2">
+        <label className="text-sm font-medium text-gray-700">Time Range:</label>
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {timeRangeOptions.map(option => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Compare With Selector */}
+      {onCompareChange && (
+        <div className="flex items-center space-x-2">
+          <label className="text-sm font-medium text-gray-700">Compare:</label>
           <select
-            value={timeRange.preset}
-            onChange={(e) => handlePresetChange(e.target.value as TimeRange['preset'])}
+            value={compareWith || ''}
+            onChange={(e) => handleCompareChange(e.target.value)}
             disabled={disabled}
-            className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {presetOptions.map(option => (
+            {compareOptions.map(option => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
             ))}
-            <option value="custom">Custom Range</option>
           </select>
-          <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-        </div>
-
-        {/* Current Range Display */}
-        <div className="flex items-center text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-lg">
-          <Calendar className="w-4 h-4 mr-2" />
-          <span>{getCurrentLabel()}</span>
-        </div>
-      </div>
-
-      {/* Custom Date Picker */}
-      {showCustomPicker && (
-        <div className="absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg p-4 z-10">
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Start Date
-              </label>
-              <input
-                type="date"
-                value={customStartDate}
-                onChange={(e) => setCustomStartDate(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                End Date
-              </label>
-              <input
-                type="date"
-                value={customEndDate}
-                onChange={(e) => setCustomEndDate(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              />
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={handleCustomDateChange}
-                className="flex-1 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors"
-              >
-                Apply
-              </button>
-              <button
-                onClick={() => setShowCustomPicker(false)}
-                className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
         </div>
       )}
+
+      {/* Current Selection Display */}
+      <div className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-lg">
+        📅 {getCurrentLabel()}
+        {compareWith && (
+          <span className="ml-2 text-blue-600">
+            vs {compareOptions.find(opt => opt.value === compareWith)?.label}
+          </span>
+        )}
+      </div>
     </div>
   )
 }
