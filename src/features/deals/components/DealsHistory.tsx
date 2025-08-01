@@ -1,29 +1,29 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { History, Search, Download, Calendar } from 'lucide-react'
+import { History, Download } from 'lucide-react'
 import { useDeals } from '../hooks/useDeals'
 import { useBusinessFilters } from '../hooks/useBusinessFilters'
-import { DealFilters, Deal } from '../types'
+import { Deal, BusinessFilter } from '../types'
 import { LoadingSpinner } from '../../../shared/components'
 import { cn } from '../../../shared/utils/cn'
 import DealRowActions from './DealRowActions'
 import EditDealModal from './EditDealModal'
 import DeleteConfirmation from './DeleteConfirmation'
-import QuickFilters from './QuickFilters'
+import DealsFilters from './DealsFilters'
 import SmartInsights from './SmartInsights'
+import DealDetailView from './DealDetailView'
 
 interface DealsHistoryProps {
   onViewDeal?: (dealId: string) => void
 }
 
+
 export default function DealsHistory({}: DealsHistoryProps) {
   // Modal states
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null)
   const [deletingDeal, setDeletingDeal] = useState<Deal | null>(null)
+  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null)
   
-  // Legacy state (to prevent cache issues)
-  const showFilters = false
-
   // Get all deals (we'll filter client-side for business intelligence)
   const { deals: allDeals, loading, error, refreshDeals } = useDeals()
   
@@ -33,10 +33,18 @@ export default function DealsHistory({}: DealsHistoryProps) {
     setFilters, 
     insights, 
     filteredDeals,
-    availableCustomers,
     availableProducts,
-    availableSuppliers 
+    availableCompanies,
+    availableGrades,
+    availableSpecificGrades
   } = useBusinessFilters(allDeals)
+
+  console.log('🔍 DealsHistory: Using new filtering system', { 
+    filtersCount: Object.keys(filters).length,
+    hasProducts: availableProducts.length,
+    hasCompanies: availableCompanies.length,
+    totalDeals: filteredDeals.length 
+  })
 
   // Pagination for filtered deals (client-side)
   const [currentPage, setCurrentPage] = useState(1)
@@ -64,12 +72,66 @@ export default function DealsHistory({}: DealsHistoryProps) {
     setCurrentPage(1)
   }, [filters])
 
+  // Sorting state
+  const [sortField, setSortField] = useState<string | null>(null)
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+
+  // Handle column sorting
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      // Same field, toggle direction
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      // New field, start with ascending
+      setSortField(field)
+      setSortDirection('asc')
+    }
+  }
+
+  // Sort the deals data
+  const sortedDeals = useMemo(() => {
+    if (!sortField) return paginatedDeals
+
+    return [...paginatedDeals].sort((a, b) => {
+      let aValue = a[sortField as keyof typeof a]
+      let bValue = b[sortField as keyof typeof b]
+
+      // Handle special cases
+      if (sortField === 'serialNo') {
+        aValue = startIndex + paginatedDeals.indexOf(a) + 1
+        bValue = startIndex + paginatedDeals.indexOf(b) + 1
+      }
+
+      // Convert to comparable values
+      if (aValue && bValue && typeof aValue === 'string' && typeof bValue === 'string') {
+        aValue = aValue.toLowerCase()
+        bValue = bValue.toLowerCase()
+      }
+
+      let comparison = 0
+      if (aValue != null && bValue != null) {
+        if (aValue < bValue) comparison = -1
+        if (aValue > bValue) comparison = 1
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison
+    })
+  }, [paginatedDeals, sortField, sortDirection, startIndex])
+
+  // Transform deals data for the new table format  
+  const transformedDeals = sortedDeals.map((deal) => ({
+    ...deal,
+    serialNo: startIndex + sortedDeals.indexOf(deal) + 1,
+    product: `${deal.productCode} - ${deal.grade}`,
+    actions: deal.id
+  }))
+
   const handleExport = async () => {
     try {
       // This would call an export API
-      console.log('Exporting deals...', deals)
+      console.log('Exporting deals...', filteredDeals)
       // For now, just download as JSON
-      const dataStr = JSON.stringify(deals, null, 2)
+      const dataStr = JSON.stringify(filteredDeals, null, 2)
       const dataBlob = new Blob([dataStr], { type: 'application/json' })
       const url = URL.createObjectURL(dataBlob)
       const link = document.createElement('a')
@@ -111,6 +173,7 @@ export default function DealsHistory({}: DealsHistoryProps) {
     // The hook will automatically update via event bus
     refreshDeals()
   }
+
 
 
   if (error) {
@@ -161,16 +224,15 @@ export default function DealsHistory({}: DealsHistoryProps) {
         </div>
       </div>
 
-      {/* Business Filters */}
-      <QuickFilters
+      {/* Comprehensive Filters */}
+      <DealsFilters
         filters={filters}
         onFiltersChange={setFilters}
-        customers={availableCustomers}
-        onSearchCustomers={(query) => 
-          availableCustomers.filter(c => 
-            c.toLowerCase().includes(query.toLowerCase())
-          ).slice(0, 10)
-        }
+        availableProducts={availableProducts}
+        availableCompanies={availableCompanies}
+        availableGrades={availableGrades}
+        availableSpecificGrades={availableSpecificGrades}
+        totalResults={filteredDeals.length}
       />
 
       {/* Smart Insights */}
@@ -193,7 +255,7 @@ export default function DealsHistory({}: DealsHistoryProps) {
               <input
                 type="date"
                 value={filters.dateFrom || ''}
-                onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                onChange={(e) => setFilters((prev: BusinessFilter) => ({ ...prev, dateFrom: e.target.value }))}
                 className="input-field"
               />
             </div>
@@ -205,7 +267,7 @@ export default function DealsHistory({}: DealsHistoryProps) {
               <input
                 type="date"
                 value={filters.dateTo || ''}
-                onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                onChange={(e) => setFilters((prev: BusinessFilter) => ({ ...prev, dateTo: e.target.value }))}
                 className="input-field"
               />
             </div>
@@ -216,7 +278,7 @@ export default function DealsHistory({}: DealsHistoryProps) {
               </label>
               <select
                 value={filters.deliveryTerms || ''}
-                onChange={(e) => setFilters(prev => ({ 
+                onChange={(e) => setFilters((prev: BusinessFilter) => ({ 
                   ...prev, 
                   deliveryTerms: e.target.value === '' ? undefined : e.target.value as 'delivered' | 'pickup'
                 }))}
@@ -231,7 +293,26 @@ export default function DealsHistory({}: DealsHistoryProps) {
           
           <div className="flex justify-end mt-4 space-x-2">
             <button
-              onClick={() => setFilters({})}
+              onClick={() => setFilters({
+                timeRange: 'all-time',
+                status: [],
+                searchTerm: '',
+                products: [],
+                companies: [],
+                grades: [],
+                specificGrades: [],
+                valueRange: null,
+                customers: [],
+                suppliers: [],
+                deliveryMethod: [],
+                dealSource: [],
+                warehouse: [],
+                quantityRange: null,
+                dateFrom: undefined,
+                dateTo: undefined,
+                quickFilter: undefined,
+                deliveryTerms: undefined
+              })}
               className="btn-secondary"
             >
               Clear Filters
@@ -254,7 +335,10 @@ export default function DealsHistory({}: DealsHistoryProps) {
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">No deals found</h3>
             <p className="text-gray-600">
-              {searchTerm || Object.keys(filters).length > 0 
+              {filters.searchTerm || Object.keys(filters).some(key => {
+                const value = filters[key as keyof BusinessFilter];
+                return Array.isArray(value) ? value.length > 0 : value !== null && value !== undefined && value !== '';
+              })
                 ? 'No deals match your search criteria.' 
                 : 'Start by registering your first deal to see history here.'
               }
@@ -262,34 +346,125 @@ export default function DealsHistory({}: DealsHistoryProps) {
           </div>
         ) : (
           <>
-            {/* Desktop Table */}
-            <div className="hidden lg:block overflow-auto" style={{ maxHeight: '600px' }}>
+            {/* Simple Table with Sort Arrows */}
+            <div className="overflow-auto" style={{ maxHeight: '600px' }}>
               <table className="w-full" style={{ minWidth: '1200px' }}>
                 <thead className="sticky top-0 bg-white">
                   <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '60px' }}>Sr.No</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '120px', whiteSpace: 'nowrap' }}>Date</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '180px' }}>Sale Party</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-700" style={{ width: '120px' }}>Quantity Sold</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-700" style={{ width: '100px' }}>Sale Rate</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '150px' }}>Product</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '180px' }}>Purchase Party</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-700" style={{ width: '140px' }}>Quantity Purchased</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-700" style={{ width: '120px' }}>Purchase Rate</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '60px' }}>
+                      <div className="flex items-center space-x-1">
+                        <span>Sr.No</span>
+                        <span 
+                          className={`cursor-pointer hover:text-gray-600 ${sortField === 'serialNo' ? 'text-blue-600' : 'text-gray-400'}`}
+                          onClick={() => handleSort('serialNo')}
+                        >
+                          {sortField === 'serialNo' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}
+                        </span>
+                      </div>
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '120px' }}>
+                      <div className="flex items-center space-x-1">
+                        <span>Date</span>
+                        <span 
+                          className={`cursor-pointer hover:text-gray-600 ${sortField === 'date' ? 'text-blue-600' : 'text-gray-400'}`}
+                          onClick={() => handleSort('date')}
+                        >
+                          {sortField === 'date' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}
+                        </span>
+                      </div>
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '180px' }}>
+                      <div className="flex items-center space-x-1">
+                        <span>Sale Party</span>
+                        <span 
+                          className={`cursor-pointer hover:text-gray-600 ${sortField === 'saleParty' ? 'text-blue-600' : 'text-gray-400'}`}
+                          onClick={() => handleSort('saleParty')}
+                        >
+                          {sortField === 'saleParty' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}
+                        </span>
+                      </div>
+                    </th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-700" style={{ width: '120px' }}>
+                      <div className="flex items-center justify-end space-x-1">
+                        <span>Quantity Sold</span>
+                        <span 
+                          className={`cursor-pointer hover:text-gray-600 ${sortField === 'quantitySold' ? 'text-blue-600' : 'text-gray-400'}`}
+                          onClick={() => handleSort('quantitySold')}
+                        >
+                          {sortField === 'quantitySold' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}
+                        </span>
+                      </div>
+                    </th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-700" style={{ width: '100px' }}>
+                      <div className="flex items-center justify-end space-x-1">
+                        <span>Sale Rate</span>
+                        <span 
+                          className={`cursor-pointer hover:text-gray-600 ${sortField === 'saleRate' ? 'text-blue-600' : 'text-gray-400'}`}
+                          onClick={() => handleSort('saleRate')}
+                        >
+                          {sortField === 'saleRate' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}
+                        </span>
+                      </div>
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '150px' }}>
+                      <div className="flex items-center space-x-1">
+                        <span>Product</span>
+                        <span 
+                          className={`cursor-pointer hover:text-gray-600 ${sortField === 'productCode' ? 'text-blue-600' : 'text-gray-400'}`}
+                          onClick={() => handleSort('productCode')}
+                        >
+                          {sortField === 'productCode' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}
+                        </span>
+                      </div>
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '180px' }}>
+                      <div className="flex items-center space-x-1">
+                        <span>Purchase Party</span>
+                        <span 
+                          className={`cursor-pointer hover:text-gray-600 ${sortField === 'purchaseParty' ? 'text-blue-600' : 'text-gray-400'}`}
+                          onClick={() => handleSort('purchaseParty')}
+                        >
+                          {sortField === 'purchaseParty' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}
+                        </span>
+                      </div>
+                    </th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-700" style={{ width: '140px' }}>
+                      <div className="flex items-center justify-end space-x-1">
+                        <span>Quantity Purchased</span>
+                        <span 
+                          className={`cursor-pointer hover:text-gray-600 ${sortField === 'purchaseQuantity' ? 'text-blue-600' : 'text-gray-400'}`}
+                          onClick={() => handleSort('purchaseQuantity')}
+                        >
+                          {sortField === 'purchaseQuantity' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}
+                        </span>
+                      </div>
+                    </th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-700" style={{ width: '120px' }}>
+                      <div className="flex items-center justify-end space-x-1">
+                        <span>Purchase Rate</span>
+                        <span 
+                          className={`cursor-pointer hover:text-gray-600 ${sortField === 'purchaseRate' ? 'text-blue-600' : 'text-gray-400'}`}
+                          onClick={() => handleSort('purchaseRate')}
+                        >
+                          {sortField === 'purchaseRate' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}
+                        </span>
+                      </div>
+                    </th>
                     <th className="text-center py-3 px-4 font-medium text-gray-700" style={{ width: '100px' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedDeals.map((deal, index) => (
+                  {transformedDeals.map((deal, index) => (
                     <motion.tr
                       key={deal.id}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: index * 0.05 }}
-                      className="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-150"
+                      className="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                      onClick={() => setSelectedDeal(deal)}
                     >
                       <td className="py-4 px-4 text-sm font-medium text-gray-700">
-                        {index + 1}
+                        {deal.serialNo}
                       </td>
                       <td className="py-4 px-4 text-sm text-gray-900" style={{ whiteSpace: 'nowrap' }}>
                         {deal.date}
@@ -318,7 +493,7 @@ export default function DealsHistory({}: DealsHistoryProps) {
                       <td className="py-4 px-4 text-sm text-gray-900 text-right">
                         ₹{deal.purchaseRate.toLocaleString()}
                       </td>
-                      <td className="py-4 px-4 text-center">
+                      <td className="py-4 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                         <DealRowActions
                           deal={deal}
                           onEdit={handleEditDeal}
@@ -329,50 +504,6 @@ export default function DealsHistory({}: DealsHistoryProps) {
                   ))}
                 </tbody>
               </table>
-            </div>
-
-            {/* Mobile Cards */}
-            <div className="lg:hidden space-y-4">
-              {paginatedDeals.map((deal, index) => (
-                <motion.div
-                  key={deal.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: index * 0.03 }}
-                  className="bg-gray-50 rounded-xl p-4 border border-gray-200 hover:bg-white hover:border-gray-300 hover:shadow-md transition-all duration-200"
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xs font-medium text-gray-500">{index + 1}</span>
-                        <h3 className="font-medium text-gray-900">{deal.saleParty}</h3>
-                      </div>
-                      <p className="text-sm text-gray-600">{deal.date}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium text-gray-900">
-                        {formatCurrency(deal.quantitySold * deal.saleRate)}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {deal.quantitySold} kg × ₹{deal.saleRate}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">{deal.productCode}</p>
-                      <p className="text-xs text-gray-500">{deal.grade}</p>
-                    </div>
-                    
-                    <DealRowActions
-                      deal={deal}
-                      onEdit={handleEditDeal}
-                      onDelete={handleDeleteDeal}
-                    />
-                  </div>
-                </motion.div>
-              ))}
             </div>
 
             {/* Pagination info */}
@@ -455,6 +586,13 @@ export default function DealsHistory({}: DealsHistoryProps) {
         isOpen={!!deletingDeal}
         onClose={() => setDeletingDeal(null)}
         onDeleted={handleDealDeleted}
+      />
+
+      {/* Deal Detail View */}
+      <DealDetailView
+        deal={selectedDeal}
+        isOpen={!!selectedDeal}
+        onClose={() => setSelectedDeal(null)}
       />
     </motion.div>
   )

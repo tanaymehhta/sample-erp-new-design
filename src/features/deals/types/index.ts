@@ -62,26 +62,49 @@ export interface DealFilters {
 }
 
 export type TimeRange = 
+  | 'all-time'
   | 'today'
+  | 'yesterday'
   | 'this-week' 
+  | 'last-week'
   | 'this-month'
   | 'last-month'
+  | 'last-7-days'
+  | 'last-30-days'
+  | 'last-90-days'
   | 'this-quarter'
   | 'last-quarter'
   | 'this-year'
+  | 'last-year'
   | 'custom'
+
+export type DealStatus = 
+  | 'won'
+  | 'lost' 
+  | 'in-progress'
+  | 'on-hold'
+  | 'cancelled'
 
 export interface BusinessFilter {
   timeRange: TimeRange
-  customers: string[]
+  status: DealStatus[]
+  searchTerm: string
   products: string[]
+  companies: string[]
+  grades: string[]
+  specificGrades: string[]
+  valueRange: [number, number] | null
+  // Legacy filters for backward compatibility  
+  customers: string[]
   suppliers: string[]
   deliveryMethod: ('delivered' | 'pickup')[]
   dealSource: ('new' | 'inventory')[]
   warehouse: string[]
-  valueRange: [number, number] | null
   quantityRange: [number, number] | null
-  searchTerm: string
+  dateFrom?: string
+  dateTo?: string
+  quickFilter?: string
+  deliveryTerms?: 'delivered' | 'pickup'
 }
 
 export interface FilterPreset {

@@ -5,3 +5,6 @@ export { default as Layout } from './Layout'
 export { default as LoadingSpinner } from './LoadingSpinner'
 export { default as ErrorBoundary } from './ErrorBoundary'
 export { default as ConfirmationDialog } from './ConfirmationDialog'
+
+// Intuitive Filter System
+export * from './IntuitiveFilter'

@@ -1,4 +1,4 @@
-import { TrendingUp, Users, Package, Calendar } from 'lucide-react'
+import { TrendingUp, Users, Package } from 'lucide-react'
 import { FilterInsights } from '../types'
 
 interface SmartInsightsProps {

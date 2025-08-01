@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { BusinessFilter, TimeRange, FilterInsights, Deal } from '../types'
 
 // Helper function to get date ranges
@@ -7,6 +7,12 @@ const getDateRange = (timeRange: TimeRange): { from: string; to: string } => {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   
   switch (timeRange) {
+    case 'all-time':
+      return {
+        from: '01-01-1900',
+        to: '31-12-2099'
+      }
+    
     case 'today':
       return {
         from: formatDate(today),
@@ -91,6 +97,7 @@ const parseDate = (dateStr: string): Date => {
 
 const getTimeFrameDescription = (timeRange: TimeRange): string => {
   switch (timeRange) {
+    case 'all-time': return 'all time'
     case 'today': return 'for today'
     case 'this-week': return 'this week'
     case 'this-month': return 'this month'
@@ -98,32 +105,44 @@ const getTimeFrameDescription = (timeRange: TimeRange): string => {
     case 'this-quarter': return 'this quarter'
     case 'last-quarter': return 'last quarter'
     case 'this-year': return 'this year'
-    default: return 'this month'
+    case 'custom': return 'custom range'
+    default: return 'all time'
   }
 }
 
 interface UseBusinessFiltersReturn {
   filters: BusinessFilter
-  setFilters: (filters: BusinessFilter) => void
+  setFilters: (filters: BusinessFilter | ((prev: BusinessFilter) => BusinessFilter)) => void
   insights: FilterInsights
   filteredDeals: Deal[]
   availableCustomers: string[]
   availableProducts: string[]
   availableSuppliers: string[]
+  availableCompanies: string[]
+  availableGrades: string[]
+  availableSpecificGrades: string[]
 }
 
 export function useBusinessFilters(allDeals: Deal[]): UseBusinessFiltersReturn {
   const [filters, setFilters] = useState<BusinessFilter>({
-    timeRange: 'this-month',
-    customers: [],
+    timeRange: 'all-time',
+    status: [],
+    searchTerm: '',
     products: [],
+    companies: [],
+    grades: [],
+    specificGrades: [],
+    valueRange: null,
+    customers: [],
     suppliers: [],
     deliveryMethod: [],
     dealSource: [],
     warehouse: [],
-    valueRange: null,
     quantityRange: null,
-    searchTerm: ''
+    dateFrom: undefined,
+    dateTo: undefined,
+    quickFilter: undefined,
+    deliveryTerms: undefined
   })
 
   // Extract unique values for filter options
@@ -147,12 +166,42 @@ export function useBusinessFilters(allDeals: Deal[]): UseBusinessFiltersReturn {
     return suppliers.sort()
   }, [allDeals])
 
+  const availableCompanies = useMemo(() => {
+    const companies = [...new Set(allDeals.map(deal => deal.company))].filter(Boolean)
+    return companies.sort()
+  }, [allDeals])
+
+  const availableGrades = useMemo(() => {
+    const grades = [...new Set(allDeals.map(deal => deal.grade))].filter(Boolean)
+    return grades.sort()
+  }, [allDeals])
+
+  const availableSpecificGrades = useMemo(() => {
+    const specificGrades = [...new Set(allDeals.map(deal => deal.specificGrade))].filter(Boolean)
+    return specificGrades.sort()
+  }, [allDeals])
+
   // Filter deals based on current filters
   const filteredDeals = useMemo(() => {
     let filtered = [...allDeals]
 
-    // Time range filter
-    if (filters.timeRange) {
+    // Time range filter - use dateFrom/dateTo if provided, otherwise use timeRange
+    if (filters.dateFrom || filters.dateTo) {
+      if (filters.dateFrom) {
+        const fromDate = parseDate(filters.dateFrom)
+        filtered = filtered.filter(deal => {
+          const dealDate = parseDate(deal.date)
+          return dealDate >= fromDate
+        })
+      }
+      if (filters.dateTo) {
+        const toDate = parseDate(filters.dateTo)
+        filtered = filtered.filter(deal => {
+          const dealDate = parseDate(deal.date)
+          return dealDate <= toDate
+        })
+      }
+    } else if (filters.timeRange) {
       const { from, to } = getDateRange(filters.timeRange)
       const fromDate = parseDate(from)
       const toDate = parseDate(to)
@@ -177,6 +226,27 @@ export function useBusinessFilters(allDeals: Deal[]): UseBusinessFiltersReturn {
       )
     }
 
+    // Company filter
+    if (filters.companies.length > 0) {
+      filtered = filtered.filter(deal => 
+        filters.companies.includes(deal.company)
+      )
+    }
+
+    // Grade filter
+    if (filters.grades.length > 0) {
+      filtered = filtered.filter(deal => 
+        filters.grades.includes(deal.grade)
+      )
+    }
+
+    // Specific Grade filter
+    if (filters.specificGrades.length > 0) {
+      filtered = filtered.filter(deal => 
+        filters.specificGrades.includes(deal.specificGrade)
+      )
+    }
+
     // Supplier filter
     if (filters.suppliers.length > 0) {
       filtered = filtered.filter(deal => 
@@ -184,8 +254,12 @@ export function useBusinessFilters(allDeals: Deal[]): UseBusinessFiltersReturn {
       )
     }
 
-    // Delivery method filter
-    if (filters.deliveryMethod.length > 0) {
+    // Delivery method filter (use individual deliveryTerms or array deliveryMethod)
+    if (filters.deliveryTerms) {
+      filtered = filtered.filter(deal => 
+        deal.deliveryTerms === filters.deliveryTerms
+      )
+    } else if (filters.deliveryMethod.length > 0) {
       filtered = filtered.filter(deal => 
         filters.deliveryMethod.includes(deal.deliveryTerms)
       )
@@ -229,6 +303,10 @@ export function useBusinessFilters(allDeals: Deal[]): UseBusinessFiltersReturn {
         deal.saleParty.toLowerCase().includes(searchLower) ||
         deal.productCode.toLowerCase().includes(searchLower) ||
         deal.purchaseParty.toLowerCase().includes(searchLower) ||
+        deal.company.toLowerCase().includes(searchLower) ||
+        deal.grade.toLowerCase().includes(searchLower) ||
+        deal.specificGrade.toLowerCase().includes(searchLower) ||
+        deal.id.toString().includes(searchLower) ||
         (deal.saleComments && deal.saleComments.toLowerCase().includes(searchLower)) ||
         (deal.purchaseComments && deal.purchaseComments.toLowerCase().includes(searchLower))
       )
@@ -268,6 +346,9 @@ export function useBusinessFilters(allDeals: Deal[]): UseBusinessFiltersReturn {
     filteredDeals,
     availableCustomers,
     availableProducts,
-    availableSuppliers
+    availableSuppliers,
+    availableCompanies,
+    availableGrades,
+    availableSpecificGrades
   }
 }
