@@ -20,7 +20,7 @@ import { productService } from '../../customers/services/productService'
 import { customerService } from '../../customers/services/customerService'
 import InventorySelector from '../../inventory/components/InventorySelector'
 import { InventoryItem } from '../../inventory/services/inventoryService'
-import { AdditionalNotificationInput, useAdditionalNotification } from '../../additional-notifications'
+import { BossNotificationSubscription } from '../../boss-notifications'
 import toast from 'react-hot-toast'
 
 // Utility function to format date as DD-MM-YYYY for display/API
@@ -61,10 +61,8 @@ export default function NewDealForm({ onSuccess, onCancel }: NewDealFormProps) {
   const [loadingData, setLoadingData] = useState(true)
   const [selectedInventoryItems, setSelectedInventoryItems] = useState<Array<{id: string, quantity: number}>>([])
   const [hasInventoryForProduct, setHasInventoryForProduct] = useState(false)
-  const [additionalPhoneNumber, setAdditionalPhoneNumber] = useState('')
 
   const { createDeal, creating } = useDeals()
-  const { sendNotification: sendAdditionalNotification } = useAdditionalNotification()
   
   const { 
     register, 
@@ -195,24 +193,7 @@ export default function NewDealForm({ onSuccess, onCancel }: NewDealFormProps) {
       if (createdDeal) {
         let toastMessage = 'Deal registered successfully! WhatsApp notifications sent.'
         
-        // Send additional notification if phone number is provided
-        if (additionalPhoneNumber.trim()) {
-          const additionalResult = await sendAdditionalNotification(additionalPhoneNumber, createdDeal)
-          
-          if (additionalResult && !additionalResult.success) {
-            // Show warning about additional notification failure
-            toast.success(`${toastMessage}\n⚠️ Additional notification failed: ${additionalResult.error}`, {
-              duration: 6000
-            })
-          } else if (additionalResult && additionalResult.success) {
-            toastMessage += ` Additional notification sent to ${additionalPhoneNumber}.`
-            toast.success(toastMessage)
-          } else {
-            toast.success(toastMessage)
-          }
-        } else {
-          toast.success(toastMessage)
-        }
+        toast.success(toastMessage)
         
         // Reset form
         reset({
@@ -221,11 +202,10 @@ export default function NewDealForm({ onSuccess, onCancel }: NewDealFormProps) {
           saleSource: 'new'
         })
         
-        // Reset inventory selection and additional phone
+        // Reset inventory selection
         setSelectedInventoryItems([])
         setSelectedProduct(null)
         setHasInventoryForProduct(false)
-        setAdditionalPhoneNumber('')
         
         if (onSuccess) {
           onSuccess(createdDeal)
@@ -651,13 +631,9 @@ export default function NewDealForm({ onSuccess, onCancel }: NewDealFormProps) {
           </div>
         </motion.div>
 
-        {/* Additional Notification */}
+        {/* Boss Notification Subscription */}
         <motion.div variants={itemVariants}>
-          <AdditionalNotificationInput
-            value={additionalPhoneNumber}
-            onChange={setAdditionalPhoneNumber}
-            placeholder="Enter phone number for additional notification (optional)"
-          />
+          <BossNotificationSubscription />
         </motion.div>
 
         {/* Submit Button */}
@@ -689,7 +665,6 @@ export default function NewDealForm({ onSuccess, onCancel }: NewDealFormProps) {
                 saleSource: 'new'
               })
               setSelectedProduct(null)
-              setAdditionalPhoneNumber('')
             }}
           >
             Reset Form

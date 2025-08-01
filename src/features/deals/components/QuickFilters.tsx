@@ -7,7 +7,6 @@ interface QuickFiltersProps {
   filters: BusinessFilter
   onFiltersChange: (filters: BusinessFilter) => void
   customers: string[]
-  onSearchCustomers: (query: string) => string[]
 }
 
 const TIME_RANGES = [
@@ -20,7 +19,7 @@ const TIME_RANGES = [
   { value: 'this-year' as TimeRange, label: 'This Year' },
 ]
 
-export default function QuickFilters({ filters, onFiltersChange, customers, onSearchCustomers }: QuickFiltersProps) {
+export default function QuickFilters({ filters, onFiltersChange, customers }: QuickFiltersProps) {
   const [showTimeDropdown, setShowTimeDropdown] = useState(false)
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
   const [customerSearch, setCustomerSearch] = useState('')
@@ -47,16 +46,24 @@ export default function QuickFilters({ filters, onFiltersChange, customers, onSe
 
   const clearAllFilters = () => {
     onFiltersChange({
-      timeRange: 'this-month',
-      customers: [],
+      timeRange: 'all-time',
+      status: [],
+      searchTerm: '',
       products: [],
+      companies: [],
+      grades: [],
+      specificGrades: [],
+      valueRange: null,
+      customers: [],
       suppliers: [],
       deliveryMethod: [],
       dealSource: [],
       warehouse: [],
-      valueRange: null,
       quantityRange: null,
-      searchTerm: ''
+      dateFrom: undefined,
+      dateTo: undefined,
+      quickFilter: undefined,
+      deliveryTerms: undefined
     })
   }
 

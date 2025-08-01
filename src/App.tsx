@@ -8,6 +8,7 @@ const NewDeal = lazy(() => import('./pages/NewDeal'))
 const DealsHistory = lazy(() => import('./pages/DealsHistory'))
 const Inventory = lazy(() => import('./pages/Inventory'))
 const Analytics = lazy(() => import('./pages/Analytics'))
+const FilterDemo = lazy(() => import('./pages/FilterDemo'))
 
 const pageVariants = {
   initial: { opacity: 0, x: 20 },
@@ -96,6 +97,20 @@ function App() {
                 transition={pageTransition}
               >
                 <Analytics />
+              </motion.div>
+            } 
+          />
+          <Route 
+            path="/filter-demo" 
+            element={
+              <motion.div
+                initial="initial"
+                animate="in"
+                exit="out"
+                variants={pageVariants}
+                transition={pageTransition}
+              >
+                <FilterDemo />
               </motion.div>
             } 
           />
