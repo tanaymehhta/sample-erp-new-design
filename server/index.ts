@@ -13,6 +13,7 @@ import inventoryRouter from './routes/inventory'
 import additionalNotificationsRouter from './routes/additional-notifications'
 import bossNotificationsRouter from './routes/boss-notifications'
 import webhooksRouter from './routes/webhooks'
+import analyticsRouter from './routes/analytics'
 
 dotenv.config()
 
@@ -36,6 +37,7 @@ app.use('/api/inventory', inventoryRouter)
 app.use('/api/whatsapp', additionalNotificationsRouter)
 app.use('/api/boss-notifications', bossNotificationsRouter)
 app.use('/api/webhooks', webhooksRouter)
+app.use('/api/analytics', analyticsRouter)
 
 // Health check
 app.get('/api/health', (req, res) => {
