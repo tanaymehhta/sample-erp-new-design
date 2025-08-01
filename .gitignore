@@ -1,11 +1,18 @@
 # Node modules
 node_modules/
 
-# Environment variables
-.env
+# Environment variables - SECURITY CRITICAL
+.env*
+!.env.example
 
-# Generated clients or configs with secrets
-gen-lang-client-0238807985-5ad5a4c250c2.json
+# Google service account credentials - NEVER COMMIT
+gen-lang-client-*.json
+*-service-account.json
+google-credentials.json
+
+# All credential files
+server/config/credentials/
+credentials/
 
 # Prisma environment files (if any)
 prisma/.env

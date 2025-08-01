@@ -1,8 +1,5 @@
 import { google } from 'googleapis'
-import path from 'path'
-import dotenv from 'dotenv'
-
-dotenv.config()
+import { credentialManager } from '../config/credentials'
 
 interface DealSource {
   id: string
@@ -36,17 +33,23 @@ interface DealData {
   sources?: DealSource[]
 }
 
-const GOOGLE_SHEETS_ID = process.env.GOOGLE_SHEETS_ID
-const GOOGLE_SERVICE_ACCOUNT_PATH = path.join(process.cwd(), 'gen-lang-client-0238807985-2056cd44e1e5.json')
-
 let auth: any = null
 
 async function getGoogleAuth() {
   if (!auth) {
-    auth = new google.auth.GoogleAuth({
-      keyFile: GOOGLE_SERVICE_ACCOUNT_PATH,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets']
-    })
+    try {
+      const credentials = credentialManager.loadGoogleCredentials()
+      
+      auth = new google.auth.GoogleAuth({
+        credentials,
+        scopes: ['https://www.googleapis.com/auth/spreadsheets']
+      })
+      
+      console.log('✅ Google Sheets authentication initialized successfully')
+    } catch (error) {
+      console.error('❌ Failed to initialize Google Sheets auth:', error.message)
+      throw new Error('Google Sheets authentication failed. Please check your credentials configuration.')
+    }
   }
   return auth
 }
@@ -91,7 +94,7 @@ export async function syncToGoogleSheets(deal: DealData) {
         
         // Append each row to Main sheet
         const response = await sheets.spreadsheets.values.append({
-          spreadsheetId: GOOGLE_SHEETS_ID,
+          spreadsheetId: credentialManager.getEnvVar('GOOGLE_SHEETS_ID'),
           range: 'Main!A:N',
           valueInputOption: 'RAW',
           requestBody: {
@@ -127,7 +130,7 @@ export async function syncToGoogleSheets(deal: DealData) {
       ]
       
       const response = await sheets.spreadsheets.values.append({
-        spreadsheetId: GOOGLE_SHEETS_ID,
+        spreadsheetId: credentialManager.getEnvVar('GOOGLE_SHEETS_ID'),
         range: 'Main!A:N',
         valueInputOption: 'RAW',
         requestBody: {
@@ -169,7 +172,7 @@ export async function getGoogleSheetsData(sheetName: string) {
     }
     
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: GOOGLE_SHEETS_ID,
+      spreadsheetId: credentialManager.getEnvVar('GOOGLE_SHEETS_ID'),
       range
     })
     
@@ -199,7 +202,7 @@ export async function addProductToDatabase(product: {
     ]
     
     const response = await sheets.spreadsheets.values.append({
-      spreadsheetId: GOOGLE_SHEETS_ID,
+      spreadsheetId: credentialManager.getEnvVar('GOOGLE_SHEETS_ID'),
       range: 'Product Database!B:F',
       valueInputOption: 'RAW',
       requestBody: {
@@ -242,7 +245,7 @@ export async function updateInventory(inventoryItem: {
     ]
     
     const response = await sheets.spreadsheets.values.append({
-      spreadsheetId: GOOGLE_SHEETS_ID,
+      spreadsheetId: credentialManager.getEnvVar('GOOGLE_SHEETS_ID'),
       range: 'Inventory!A:I',
       valueInputOption: 'RAW',
       requestBody: {
