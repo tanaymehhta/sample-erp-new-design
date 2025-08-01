@@ -38,7 +38,7 @@ export default function DealsFilters({
 }: DealsFiltersProps) {
   console.log('🎯 DealsFilters component is rendering!', { filters, totalResults })
   const [showDateDropdown, setShowDateDropdown] = useState(false)
-  const [showSecondaryFilters, setShowSecondaryFilters] = useState(true)
+  const [showSecondaryFilters, setShowSecondaryFilters] = useState(false)
   const [showProductDropdown, setShowProductDropdown] = useState(false)
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false)
   const [showGradeDropdown, setShowGradeDropdown] = useState(false)

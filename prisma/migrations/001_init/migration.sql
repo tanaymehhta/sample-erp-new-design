@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS "deals" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "date" TEXT NOT NULL,
+    "saleParty" TEXT NOT NULL,
+    "quantitySold" REAL NOT NULL,
+    "saleRate" REAL NOT NULL,
+    "deliveryTerms" TEXT NOT NULL,
+    "productCode" TEXT NOT NULL,
+    "grade" TEXT NOT NULL,
+    "company" TEXT NOT NULL,
+    "specificGrade" TEXT NOT NULL,
+    "saleSource" TEXT NOT NULL,
+    "purchaseParty" TEXT NOT NULL,
+    "purchaseQuantity" REAL NOT NULL,
+    "purchaseRate" REAL NOT NULL,
+    "saleComments" TEXT,
+    "purchaseComments" TEXT,
+    "finalComments" TEXT,
+    "warehouse" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
+);

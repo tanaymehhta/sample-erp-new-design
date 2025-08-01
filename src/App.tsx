@@ -7,6 +7,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'))
 const NewDeal = lazy(() => import('./pages/NewDeal'))
 const DealsHistory = lazy(() => import('./pages/DealsHistory'))
 const Inventory = lazy(() => import('./pages/Inventory'))
+const PriceList = lazy(() => import('./pages/PriceList'))
 const Analytics = lazy(() => import('./pages/Analytics'))
 const FilterDemo = lazy(() => import('./pages/FilterDemo'))
 
@@ -83,6 +84,20 @@ function App() {
                 transition={pageTransition}
               >
                 <Inventory />
+              </motion.div>
+            } 
+          />
+          <Route 
+            path="/price-list" 
+            element={
+              <motion.div
+                initial="initial"
+                animate="in"
+                exit="out"
+                variants={pageVariants}
+                transition={pageTransition}
+              >
+                <PriceList />
               </motion.div>
             } 
           />
