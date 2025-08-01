@@ -12,14 +12,24 @@ import {
   Loader2
 } from 'lucide-react'
 import { cn } from '../../../shared/utils/cn'
-import { AutoComplete } from '../../../shared/components'
+import { SearchableAutoComplete } from '../../../shared/components'
+import { createSearchableProductOptions } from '../../../shared/utils/productSearch'
 import { useDeals } from '../hooks/useDeals'
 import { DealFormData, CreateDealRequest } from '../types'
 import { productService } from '../../customers/services/productService'
 import { customerService } from '../../customers/services/customerService'
 import InventorySelector from '../../inventory/components/InventorySelector'
 import { InventoryItem } from '../../inventory/services/inventoryService'
+import { BossNotificationSubscription } from '../../boss-notifications'
 import toast from 'react-hot-toast'
+
+// Utility function to format date as DD-MM-YYYY for display/API
+const formatDateToDDMMYYYY = (date: Date = new Date()): string => {
+  const day = date.getDate().toString().padStart(2, '0')
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const year = date.getFullYear()
+  return `${day}-${month}-${year}`
+}
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -63,7 +73,7 @@ export default function NewDealForm({ onSuccess, onCancel }: NewDealFormProps) {
     reset
   } = useForm<DealFormData>({
     defaultValues: {
-      date: new Date().toISOString().split('T')[0],
+      date: formatDateToDDMMYYYY(),
       deliveryTerms: 'delivered',
       saleSource: 'new'
     }
@@ -151,9 +161,15 @@ export default function NewDealForm({ onSuccess, onCancel }: NewDealFormProps) {
 
   const onSubmit = async (data: DealFormData) => {
     try {
+      // Convert YYYY-MM-DD to DD-MM-YYYY format
+      const convertedDate = data.date.includes('-') && data.date.length === 10 && data.date.charAt(4) === '-' 
+        ? data.date.split('-').reverse().join('-') // Convert YYYY-MM-DD to DD-MM-YYYY
+        : data.date // Keep as is if already in DD-MM-YYYY format
+
       // Convert form data to API format
       const dealData: CreateDealRequest & { selectedInventoryItems?: Array<{id: string, quantity: number}> } = {
         ...data,
+        date: convertedDate,
         quantitySold: Number(data.quantitySold),
         saleRate: Number(data.saleRate),
         purchaseQuantity: Number(data.purchaseQuantity),
@@ -175,11 +191,13 @@ export default function NewDealForm({ onSuccess, onCancel }: NewDealFormProps) {
       const createdDeal = await createDeal(dealData)
       
       if (createdDeal) {
-        toast.success('Deal registered successfully! WhatsApp notifications sent.')
+        let toastMessage = 'Deal registered successfully! WhatsApp notifications sent.'
+        
+        toast.success(toastMessage)
         
         // Reset form
         reset({
-          date: new Date().toISOString().split('T')[0],
+          date: formatDateToDDMMYYYY(),
           deliveryTerms: 'delivered',
           saleSource: 'new'
         })
@@ -220,18 +238,14 @@ export default function NewDealForm({ onSuccess, onCancel }: NewDealFormProps) {
     label: supplier.partyName
   }))
 
-  const productOptions = products.map(product => ({
-    value: product.productCode,
-    label: product.productCode,
-    details: `${product.grade} | ${product.company} | ${product.specificGrade}`
-  }))
+  const productOptions = createSearchableProductOptions(products)
 
   return (
     <motion.div
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="max-w-4xl mx-auto"
+      className="max-w-4xl mx-auto w-full px-4"
     >
       <motion.div variants={itemVariants} className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 flex items-center">
@@ -257,19 +271,24 @@ export default function NewDealForm({ onSuccess, onCancel }: NewDealFormProps) {
                 Date <span className="text-red-500">*</span>
               </label>
               <input
-                type="date"
+                type="text"
                 {...register('date', { required: 'Date is required' })}
                 className={cn("input-field", errors.date && "border-red-500")}
+                placeholder="dd/mm/yyyy"
               />
               {errors.date && (
                 <p className="error-message">{errors.date.message}</p>
               )}
             </div>
 
-            <AutoComplete
+            <SearchableAutoComplete
               label="Sale Party (Customer)"
               required
-              options={customerOptions}
+              options={customerOptions.map(opt => ({
+                value: opt.value,
+                label: opt.label,
+                searchableFields: {}
+              }))}
               value={watch('saleParty') || ''}
               onChange={(value) => setValue('saleParty', value)}
               placeholder="Search customer..."
@@ -371,13 +390,13 @@ export default function NewDealForm({ onSuccess, onCancel }: NewDealFormProps) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
-              <AutoComplete
+              <SearchableAutoComplete
                 label="Product Code"
                 required
                 options={productOptions}
                 value={productCode || ''}
                 onChange={(value) => setValue('productCode', value)}
-                placeholder="Search product code..."
+                placeholder="Search by product code, grade, company, or specific grade..."
                 error={errors.productCode?.message}
               />
             </div>
@@ -504,63 +523,71 @@ export default function NewDealForm({ onSuccess, onCancel }: NewDealFormProps) {
               <h2 className="text-xl font-semibold text-gray-900">Purchase Details</h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <AutoComplete
-                label="Purchase Party (Supplier)"
-                required
-                options={supplierOptions}
-                value={watch('purchaseParty') || ''}
-                onChange={(value) => setValue('purchaseParty', value)}
-                placeholder="Search supplier..."
-                error={errors.purchaseParty?.message}
-              />
-
+            <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Purchase Quantity (kg) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  {...register('purchaseQuantity', { 
-                    required: 'Purchase quantity is required',
-                    min: { value: 0.01, message: 'Quantity must be greater than 0' }
-                  })}
-                  className={cn("input-field", errors.purchaseQuantity && "border-red-500")}
-                  placeholder="Enter quantity in kg"
+                <SearchableAutoComplete
+                  label="Purchase Party (Supplier)"
+                  required
+                  options={supplierOptions.map(opt => ({
+                    value: opt.value,
+                    label: opt.label,
+                    searchableFields: {}
+                  }))}
+                  value={watch('purchaseParty') || ''}
+                  onChange={(value) => setValue('purchaseParty', value)}
+                  placeholder="Search supplier..."
+                  error={errors.purchaseParty?.message}
                 />
-                {errors.purchaseQuantity && (
-                  <p className="error-message">{errors.purchaseQuantity.message}</p>
-                )}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Purchase Rate (₹/kg) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  {...register('purchaseRate', { 
-                    required: 'Purchase rate is required',
-                    min: { value: 0.01, message: 'Rate must be greater than 0' }
-                  })}
-                  className={cn("input-field", errors.purchaseRate && "border-red-500")}
-                  placeholder="Enter rate per kg"
-                />
-                {errors.purchaseRate && (
-                  <p className="error-message">{errors.purchaseRate.message}</p>
-                )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Purchase Quantity (kg) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    {...register('purchaseQuantity', { 
+                      required: 'Purchase quantity is required',
+                      min: { value: 0.01, message: 'Quantity must be greater than 0' }
+                    })}
+                    className={cn("input-field", errors.purchaseQuantity && "border-red-500")}
+                    placeholder="Enter quantity in kg"
+                  />
+                  {errors.purchaseQuantity && (
+                    <p className="error-message">{errors.purchaseQuantity.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Purchase Rate (₹/kg) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    {...register('purchaseRate', { 
+                      required: 'Purchase rate is required',
+                      min: { value: 0.01, message: 'Rate must be greater than 0' }
+                    })}
+                    className={cn("input-field", errors.purchaseRate && "border-red-500")}
+                    placeholder="Enter rate per kg"
+                  />
+                  {errors.purchaseRate && (
+                    <p className="error-message">{errors.purchaseRate.message}</p>
+                  )}
+                </div>
               </div>
 
-              <div>
+              <div className="pb-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Warehouse Location
                 </label>
                 <input
                   type="text"
                   {...register('warehouse')}
-                  className="input-field"
+                  className="input-field w-full"
                   placeholder="Enter warehouse location"
                 />
               </div>
@@ -604,6 +631,11 @@ export default function NewDealForm({ onSuccess, onCancel }: NewDealFormProps) {
           </div>
         </motion.div>
 
+        {/* Boss Notification Subscription */}
+        <motion.div variants={itemVariants}>
+          <BossNotificationSubscription />
+        </motion.div>
+
         {/* Submit Button */}
         <motion.div 
           variants={itemVariants}
@@ -628,7 +660,7 @@ export default function NewDealForm({ onSuccess, onCancel }: NewDealFormProps) {
             whileTap={{ scale: 0.98 }}
             onClick={() => {
               reset({
-                date: new Date().toISOString().split('T')[0],
+                date: formatDateToDDMMYYYY(),
                 deliveryTerms: 'delivered',
                 saleSource: 'new'
               })

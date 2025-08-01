@@ -45,30 +45,30 @@ router.post('/', async (req, res) => {
   }
 })
 
-// Get supplier by ID
-router.get('/:id', async (req, res) => {
-  try {
-    const { id } = req.params
-    const supplier = await prisma.purchaseParty.findUnique({
-      where: { id }
-    })
-    
-    if (!supplier) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Supplier not found' 
-      })
-    }
-    
-    res.json({ success: true, data: supplier })
-  } catch (error) {
-    console.error('Error fetching supplier:', error)
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to fetch supplier',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    })
-  }
+
+// Get supplier statistics - counts total suppliers
+router.get('/stats', async (req, res) => {
+  res.json({ success: true, message: 'Supplier stats endpoint - TODO: implement supplier statistics' })
+})
+
+// Search suppliers with filters - advanced supplier search by name, location, performance
+router.get('/search', async (req, res) => {
+  res.json({ success: true, message: 'Search suppliers endpoint - TODO: implement flexible search' })
+})
+
+// Get supplier suggestions for autocomplete - provides typeahead suggestions for forms
+router.get('/suggestions', async (req, res) => {
+  res.json({ success: true, message: 'Supplier suggestions endpoint - TODO: implement autocomplete' })
+})
+
+// Bulk import suppliers - imports supplier list from CSV/Excel files
+router.post('/import', async (req, res) => {
+  res.json({ success: true, message: 'Import suppliers endpoint - TODO: implement bulk import' })
+})
+
+// Export supplier data - generates supplier reports in multiple formats
+router.get('/export', async (req, res) => {
+  res.json({ success: true, message: 'Export suppliers endpoint - TODO: implement data export' })
 })
 
 export default router

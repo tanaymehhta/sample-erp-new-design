@@ -27,6 +27,9 @@ export interface CreateDealRequest {
   saleRate: number
   deliveryTerms: 'delivered' | 'pickup'
   productCode: string
+  grade?: string
+  company?: string
+  specificGrade?: string
   saleSource: 'new' | 'inventory'
   purchaseParty: string
   purchaseQuantity: number
@@ -46,6 +49,78 @@ export interface DealFilters {
   deliveryTerms?: 'delivered' | 'pickup'
   minAmount?: number
   maxAmount?: number
+  page?: number
+  limit?: number
+  // New business-friendly filters
+  customers?: string[]
+  suppliers?: string[]
+  products?: string[]
+  dealSource?: ('new' | 'inventory')[]
+  warehouse?: string[]
+  timeRange?: TimeRange
+  quickFilter?: string
+}
+
+export type TimeRange = 
+  | 'all-time'
+  | 'today'
+  | 'yesterday'
+  | 'this-week' 
+  | 'last-week'
+  | 'this-month'
+  | 'last-month'
+  | 'last-7-days'
+  | 'last-30-days'
+  | 'last-90-days'
+  | 'this-quarter'
+  | 'last-quarter'
+  | 'this-year'
+  | 'last-year'
+  | 'custom'
+
+export type DealStatus = 
+  | 'won'
+  | 'lost' 
+  | 'in-progress'
+  | 'on-hold'
+  | 'cancelled'
+
+export interface BusinessFilter {
+  timeRange: TimeRange
+  status: DealStatus[]
+  searchTerm: string
+  products: string[]
+  companies: string[]
+  grades: string[]
+  specificGrades: string[]
+  valueRange: [number, number] | null
+  // Legacy filters for backward compatibility  
+  customers: string[]
+  suppliers: string[]
+  deliveryMethod: ('delivered' | 'pickup')[]
+  dealSource: ('new' | 'inventory')[]
+  warehouse: string[]
+  quantityRange: [number, number] | null
+  dateFrom?: string
+  dateTo?: string
+  quickFilter?: string
+  deliveryTerms?: 'delivered' | 'pickup'
+}
+
+export interface FilterPreset {
+  id: string
+  name: string
+  description: string
+  filters: BusinessFilter
+  icon: string
+}
+
+export interface FilterInsights {
+  totalDeals: number
+  totalValue: number
+  topCustomer: string | null
+  avgDealSize: number
+  timeFrameDescription: string
 }
 
 export interface DealSummary {

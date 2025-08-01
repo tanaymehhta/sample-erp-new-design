@@ -1,6 +1,6 @@
 import { ApiResponse } from '../../../shared/types/api'
 import { ApiServiceInterface } from '../../../shared/services/apiService'
-import { EventBusInterface, EVENT_TYPES } from '../../../shared/services/eventBus'
+import { EventBusInterface } from '../../../shared/services/eventBus'
 import { Deal } from '../../deals/types'
 
 export interface InventoryItem {
@@ -89,7 +89,7 @@ class InventoryService implements InventoryServiceInterface {
   async updateInventoryItem(id: string, item: Partial<CreateInventoryRequest>): Promise<ApiResponse<InventoryItem>> {
     try {
       console.log('📦 InventoryService: Updating inventory item', id, item)
-      const response = await this.apiService.put<InventoryItem>(`${this.endpoint}/${id}`, item)
+      const response = await this.apiService.put<InventoryItem>(`${this.endpoint}/update`, { id, ...item })
       
       if (response.success && response.data) {
         this.eventBus.emit('inventory.item.updated', response.data, 'InventoryService')
@@ -106,7 +106,7 @@ class InventoryService implements InventoryServiceInterface {
   async deleteInventoryItem(id: string): Promise<ApiResponse<void>> {
     try {
       console.log('📦 InventoryService: Deleting inventory item', id)
-      const response = await this.apiService.delete<void>(`${this.endpoint}/${id}`)
+      const response = await this.apiService.delete<void>(`${this.endpoint}/remove/${id}`)
       
       if (response.success) {
         this.eventBus.emit('inventory.item.deleted', { id }, 'InventoryService')
@@ -171,6 +171,27 @@ class InventoryService implements InventoryServiceInterface {
       return response
     } catch (error) {
       console.error('❌ InventoryService: Failed to fetch available inventory items', error)
+      throw error
+    }
+  }
+
+  async deductFromInventory(productCode: string, grade: string, company: string, specificGrade: string, quantity: number): Promise<ApiResponse<boolean>> {
+    try {
+      console.log(`📦 InventoryService: Deducting ${quantity} from ${productCode}`)
+      const response = await this.apiService.post<boolean>(`${this.endpoint}/deduct`, {
+        productCode,
+        grade,
+        company,
+        specificGrade,
+        quantity
+      })
+      if (response.success && response.data) {
+        this.eventBus.emit('inventory.stock.deducted', { productCode, quantity }, 'InventoryService')
+        console.log(`✅ Successfully deducted from inventory`)
+      }
+      return response
+    } catch (error) {
+      console.error('❌ InventoryService: Failed to deduct from inventory', error)
       throw error
     }
   }

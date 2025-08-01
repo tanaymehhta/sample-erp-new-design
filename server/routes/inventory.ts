@@ -23,31 +23,6 @@ router.get('/', async (req, res) => {
   }
 })
 
-// Get inventory item by ID
-router.get('/:id', async (req, res) => {
-  try {
-    const { id } = req.params
-    const item = await prisma.inventory.findUnique({
-      where: { id }
-    })
-    
-    if (!item) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Inventory item not found' 
-      })
-    }
-    
-    res.json({ success: true, data: item })
-  } catch (error) {
-    console.error('Error fetching inventory item:', error)
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to fetch inventory item',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    })
-  }
-})
 
 // Create new inventory item
 router.post('/', async (req, res) => {
@@ -83,39 +58,98 @@ router.post('/', async (req, res) => {
 })
 
 // Update inventory item
-router.put('/:id', async (req, res) => {
+router.put('/update', async (req, res) => {
   try {
-    const { id } = req.params
-    const updateData = req.body
+    const { id, ...updateData } = req.body
     
-    const inventoryItem = await prisma.inventory.update({
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        error: 'ID is required',
+        message: 'Inventory item ID must be provided'
+      })
+    }
+    
+    // Convert numeric fields
+    if (updateData.quantity !== undefined) {
+      updateData.quantity = parseFloat(updateData.quantity)
+    }
+    if (updateData.rate !== undefined) {
+      updateData.rate = parseFloat(updateData.rate)
+    }
+    
+    const updatedItem = await prisma.inventory.update({
       where: { id },
-      data: {
-        ...updateData,
-        quantity: updateData.quantity !== undefined ? parseFloat(updateData.quantity) : undefined,
-        rate: updateData.rate !== undefined ? parseFloat(updateData.rate) : undefined
-      }
+      data: updateData
+    })
+
+    // Sync to Google Sheets (non-blocking)
+    updateInventory(updatedItem).catch(error => {
+      console.error('Google Sheets inventory sync failed:', error)
     })
 
     res.json({ 
       success: true, 
-      data: inventoryItem,
+      data: updatedItem,
       message: 'Inventory item updated successfully'
     })
   } catch (error) {
     console.error('Error updating inventory item:', error)
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to update inventory item',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    })
+    
+    if (error instanceof Error && error.message.includes('Record to update not found')) {
+      res.status(404).json({ 
+        success: false, 
+        error: 'Inventory item not found',
+        message: `Inventory item with id ${req.body.id} not found`
+      })
+    } else {
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to update inventory item',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      })
+    }
   }
 })
 
 // Delete inventory item
-router.delete('/:id', async (req, res) => {
+router.delete('/remove', async (req, res) => {
   try {
-    const { id } = req.params
+    const { id } = req.body
+    
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        error: 'ID is required',
+        message: 'Inventory item ID must be provided'
+      })
+    }
+    
+    // Check if inventory item exists before deletion
+    const existingItem = await prisma.inventory.findUnique({
+      where: { id }
+    })
+    
+    if (!existingItem) {
+      return res.status(404).json({
+        success: false,
+        error: 'Inventory item not found',
+        message: `Inventory item with id ${id} not found`
+      })
+    }
+    
+    // Check if item is referenced in any deals
+    const referencedInDeals = await prisma.dealSource.findFirst({
+      where: { inventoryId: id }
+    })
+    
+    if (referencedInDeals) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot delete inventory item',
+        message: 'This inventory item is referenced in existing deals and cannot be deleted'
+      })
+    }
     
     await prisma.inventory.delete({
       where: { id }
@@ -123,6 +157,7 @@ router.delete('/:id', async (req, res) => {
 
     res.json({ 
       success: true, 
+      data: null,
       message: 'Inventory item deleted successfully'
     })
   } catch (error) {
@@ -299,6 +334,84 @@ router.get('/summary/stats', async (req, res) => {
       message: error instanceof Error ? error.message : 'Unknown error'
     })
   }
+})
+
+// Get inventory statistics (total quantity)
+router.get('/stats', async (req, res) => {
+  try {
+    const inventorySum = await prisma.inventory.aggregate({
+      _sum: { quantity: true }
+    })
+    
+    res.json({ 
+      success: true, 
+      data: { 
+        total: inventorySum._sum.quantity || 0 
+      } 
+    })
+  } catch (error) {
+    console.error('Error fetching inventory stats:', error)
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to fetch inventory statistics',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    })
+  }
+})
+
+// Get inventory movement history - tracks all stock changes with timestamps and reasons
+router.get('/movements', async (req, res) => {
+  res.json({ success: true, message: 'Inventory movements endpoint - TODO: implement movement tracking' })
+})
+
+// Reserve inventory for deals - holds stock during deal creation process
+router.post('/reserve', async (req, res) => {
+  res.json({ success: true, message: 'Reserve inventory endpoint - TODO: implement stock reservation' })
+})
+
+// Release reserved inventory - frees up stock if deal creation fails
+router.post('/release', async (req, res) => {
+  res.json({ success: true, message: 'Release inventory endpoint - TODO: implement reservation release' })
+})
+
+// Get low stock alerts - identifies items below minimum threshold
+router.get('/low-stock', async (req, res) => {
+  res.json({ success: true, message: 'Low stock alerts endpoint - TODO: implement stock monitoring' })
+})
+
+// Manual stock adjustments - corrects inventory discrepancies with audit trail
+router.post('/adjustments', async (req, res) => {
+  res.json({ success: true, message: 'Stock adjustments endpoint - TODO: implement manual corrections' })
+})
+
+// Current inventory valuation - calculates total value of all stock at current rates
+router.get('/valuation', async (req, res) => {
+  res.json({ success: true, message: 'Inventory valuation endpoint - TODO: implement value calculation' })
+})
+
+// Bulk import inventory - imports multiple items from CSV/Excel files
+router.post('/bulk-import', async (req, res) => {
+  res.json({ success: true, message: 'Bulk import endpoint - TODO: implement file import' })
+})
+
+// Export inventory data - generates reports in multiple formats
+router.get('/export', async (req, res) => {
+  res.json({ success: true, message: 'Export inventory endpoint - TODO: implement data export' })
+})
+
+// Search inventory with filters - advanced filtering by product, date, quantity ranges
+router.get('/search', async (req, res) => {
+  res.json({ success: true, message: 'Search inventory endpoint - TODO: implement flexible search' })
+})
+
+// Get inventory aging report - shows how long items have been in stock
+router.get('/aging', async (req, res) => {
+  res.json({ success: true, message: 'Inventory aging endpoint - TODO: implement aging analysis' })
+})
+
+// Transfer inventory between locations - moves stock between warehouses
+router.post('/transfer', async (req, res) => {
+  res.json({ success: true, message: 'Inventory transfer endpoint - TODO: implement location transfers' })
 })
 
 export default router

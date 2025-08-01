@@ -1,28 +1,45 @@
 import express from 'express'
 import { PrismaClient } from '@prisma/client'
-import { sendWhatsAppNotifications } from '../services/whatsapp'
+import { sendDealNotifications } from '../services/notificationService'
 import { syncToGoogleSheets } from '../services/googleSheets'
 import { inventoryManager } from '../services/inventoryManager'
 
 const router = express.Router()
 const prisma = new PrismaClient()
 
-// Get all deals
+// Get all deals with pagination
 router.get('/', async (req, res) => {
   try {
-    const deals = await prisma.deal.findMany()
+    // Parse pagination parameters
+    const page = parseInt(req.query.page as string) || 1
+    const limit = parseInt(req.query.limit as string) || 50
+    const skip = (page - 1) * limit
+
+    // Get total count for pagination info
+    const total = await prisma.deal.count()
     
-    // Sort by date (DD-MM-YYYY format) in descending order
-    deals.sort((a, b) => {
-      const [dayA, monthA, yearA] = a.date.split('-').map(Number)
-      const [dayB, monthB, yearB] = b.date.split('-').map(Number)
-      
-      const dateA = new Date(yearA, monthA - 1, dayA)
-      const dateB = new Date(yearB, monthB - 1, dayB)
-      
-      return dateB.getTime() - dateA.getTime() // Descending order
+    // Fetch paginated deals
+    const deals = await prisma.deal.findMany({
+      skip: skip,
+      take: limit,
+      orderBy: [
+        { createdAt: 'desc' }
+      ]
     })
-    res.json({ success: true, data: deals })
+    
+    // Calculate pagination info
+    const totalPages = Math.ceil(total / limit)
+    
+    res.json({ 
+      success: true, 
+      data: deals,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages
+      }
+    })
   } catch (error) {
     console.error('Error fetching deals:', error)
     res.status(500).json({ 
@@ -124,21 +141,39 @@ router.post('/', async (req, res) => {
     })
 
     // Handle remaining stock for new material deals (outside transaction)
-    if (dealData.saleSource === 'new' || dealData.saleSource === 'New Material') {
+    if (result && (dealData.saleSource === 'new' || dealData.saleSource === 'New Material')) {
       inventoryManager.addRemainingStock(result).catch(error => {
         console.error('Failed to add remaining stock to inventory:', error)
       })
     }
 
     // Send WhatsApp notifications (non-blocking)
-    sendWhatsAppNotifications(result).catch(error => {
-      console.error('WhatsApp notification failed:', error)
-    })
+    if (result) {
+      const dealForNotifications = {
+        ...result,
+        saleComments: result.saleComments || undefined,
+        purchaseComments: result.purchaseComments || undefined,
+        finalComments: result.finalComments || undefined,
+        warehouse: result.warehouse || undefined
+      }
+      sendDealNotifications(dealForNotifications as any).catch(error => {
+        console.error('Notification sending failed:', error)
+      })
+    }
 
     // Sync to Google Sheets (non-blocking)
-    syncToGoogleSheets(result).catch(error => {
-      console.error('Google Sheets sync failed:', error)
-    })
+    if (result) {
+      const dealForSheets = {
+        ...result,
+        saleComments: result.saleComments || undefined,
+        purchaseComments: result.purchaseComments || undefined,
+        finalComments: result.finalComments || undefined,
+        warehouse: result.warehouse || undefined
+      }
+      syncToGoogleSheets(dealForSheets as any).catch(error => {
+        console.error('Google Sheets sync failed:', error)
+      })
+    }
 
     res.json({ 
       success: true, 
@@ -155,30 +190,62 @@ router.post('/', async (req, res) => {
   }
 })
 
-// Get deal by ID
-router.get('/:id', async (req, res) => {
+
+// Get deals statistics
+router.get('/stats', async (req, res) => {
   try {
-    const { id } = req.params
-    const deal = await prisma.deal.findUnique({
-      where: { id }
+    const totalDeals = await prisma.deal.count()
+    
+    res.json({ 
+      success: true, 
+      data: { 
+        total: totalDeals 
+      } 
     })
-    
-    if (!deal) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Deal not found' 
-      })
-    }
-    
-    res.json({ success: true, data: deal })
   } catch (error) {
-    console.error('Error fetching deal:', error)
+    console.error('Error fetching deals stats:', error)
     res.status(500).json({ 
       success: false, 
-      error: 'Failed to fetch deal',
+      error: 'Failed to fetch deals statistics',
       message: error instanceof Error ? error.message : 'Unknown error'
     })
   }
+})
+
+// Validate deal data before submission - provides real-time field validation for deal forms
+router.post('/validate', async (req, res) => {
+  res.json({ success: true, message: 'Deal validation endpoint - TODO: implement validation logic' })
+})
+
+// Save incomplete deals as drafts - allows users to save and resume deal creation later
+router.post('/draft', async (req, res) => {
+  res.json({ success: true, message: 'Save deal draft endpoint - TODO: implement draft saving' })
+})
+
+// Resume draft deals - retrieves previously saved incomplete deals
+router.get('/drafts', async (req, res) => {
+  res.json({ success: true, message: 'Get deal drafts endpoint - TODO: implement draft retrieval' })
+})
+
+
+// Update multiple deals at once - bulk operations for efficiency
+router.post('/bulk-update', async (req, res) => {
+  res.json({ success: true, message: 'Bulk update deals endpoint - TODO: implement bulk operations' })
+})
+
+// Get deal templates - common deal patterns for quick creation
+router.get('/templates', async (req, res) => {
+  res.json({ success: true, message: 'Deal templates endpoint - TODO: implement template system' })
+})
+
+// Advanced deal search with filters - supports complex queries with date ranges, parties, products
+router.get('/search', async (req, res) => {
+  res.json({ success: true, message: 'Advanced deal search endpoint - TODO: implement flexible search' })
+})
+
+// Export deals in various formats - generates Excel, PDF, CSV files for reporting
+router.get('/export', async (req, res) => {
+  res.json({ success: true, message: 'Export deals endpoint - TODO: implement multi-format export' })
 })
 
 export default router

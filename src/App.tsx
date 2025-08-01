@@ -1,11 +1,14 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Suspense, lazy } from 'react'
 import { Layout, ErrorBoundary } from './shared/components'
-import Dashboard from './pages/Dashboard'
-import NewDeal from './pages/NewDeal'
-import DealsHistory from './pages/DealsHistory'
-import Inventory from './pages/Inventory'
-import Analytics from './pages/Analytics'
+
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const NewDeal = lazy(() => import('./pages/NewDeal'))
+const DealsHistory = lazy(() => import('./pages/DealsHistory'))
+const Inventory = lazy(() => import('./pages/Inventory'))
+const Analytics = lazy(() => import('./pages/Analytics'))
+const FilterDemo = lazy(() => import('./pages/FilterDemo'))
 
 const pageVariants = {
   initial: { opacity: 0, x: 20 },
@@ -24,6 +27,7 @@ function App() {
     <ErrorBoundary>
       <Layout>
       <AnimatePresence mode="wait">
+        <Suspense fallback={<div className="flex items-center justify-center p-8">Loading...</div>}>
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route 
@@ -96,7 +100,22 @@ function App() {
               </motion.div>
             } 
           />
+          <Route 
+            path="/filter-demo" 
+            element={
+              <motion.div
+                initial="initial"
+                animate="in"
+                exit="out"
+                variants={pageVariants}
+                transition={pageTransition}
+              >
+                <FilterDemo />
+              </motion.div>
+            } 
+          />
         </Routes>
+        </Suspense>
       </AnimatePresence>
       </Layout>
     </ErrorBoundary>

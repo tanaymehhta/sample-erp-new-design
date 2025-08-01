@@ -9,7 +9,7 @@ dotenv.config()
 const prisma = new PrismaClient()
 
 const GOOGLE_SHEETS_ID = process.env.GOOGLE_SHEETS_ID
-const GOOGLE_SERVICE_ACCOUNT_PATH = path.join(process.cwd(), 'gen-lang-client-0238807985-5ad5a4c250c2.json')
+const GOOGLE_SERVICE_ACCOUNT_PATH = path.join(process.cwd(), 'gen-lang-client-0238807985-2056cd44e1e5.json')
 
 async function getGoogleSheetsClient() {
   const auth = new google.auth.GoogleAuth({
