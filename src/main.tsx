@@ -9,7 +9,7 @@ import './index.css'
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ServiceProvider>
-      <BrowserRouter>
+      <BrowserRouter basename="/sample-erp-new-design">
         <App />
         <Toaster 
         position="top-right"
