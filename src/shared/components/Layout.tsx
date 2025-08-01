@@ -9,7 +9,8 @@ import {
   Menu, 
   X,
   RefreshCw,
-  Factory
+  Factory,
+  DollarSign
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -21,6 +22,7 @@ const navItems = [
   { path: '/new-deal', icon: FileText, label: 'New Deal', color: 'text-green-600' },
   { path: '/history', icon: History, label: 'History', color: 'text-blue-600' },
   { path: '/inventory', icon: Package, label: 'Inventory', color: 'text-purple-600' },
+  { path: '/price-list', icon: DollarSign, label: 'Price List', color: 'text-yellow-600' },
   { path: '/analytics', icon: BarChart3, label: 'Analytics', color: 'text-orange-600' },
 ]
 
